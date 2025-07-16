@@ -17,9 +17,10 @@ interface EventDetailProps {
   onSkip?: () => void;
   onBack?: () => void;
   fromPage?: 'home' | 'browse' | 'my-events' | 'messages';
+  showActionButtons?: boolean;
 }
 
-export default function EventDetail({ event, onClose, showGroupChatButton = false, onSkip, onBack, fromPage }: EventDetailProps) {
+export default function EventDetail({ event, onClose, showGroupChatButton = false, onSkip, onBack, fromPage, showActionButtons = true }: EventDetailProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -765,100 +766,103 @@ export default function EventDetail({ event, onClose, showGroupChatButton = fals
             )}
           </div>
           
-          <div className="flex space-x-3 pb-4">
-            <button 
-              onClick={handleButtonClick}
-              onMouseEnter={() => setIsHovering(true)}
-              onMouseLeave={() => setIsHovering(false)}
-              disabled={rsvpMutation.isPending || removeRsvpMutation.isPending || cancelEventMutation.isPending}
-              className={`flex-1 py-3 rounded-lg font-medium transition-all duration-200 ${
-                (rsvpMutation.isPending || removeRsvpMutation.isPending || cancelEventMutation.isPending) 
-                  ? 'opacity-50 cursor-not-allowed'
-                  : isHovering 
-                  ? ((localRsvpStatus === 'going' || localRsvpStatus === 'attending') ? 'bg-red-500 text-white' : isOrganizer ? 'bg-red-500 text-white' : 'bg-primary text-white')
-                  : ((localRsvpStatus === 'going' || localRsvpStatus === 'attending')
-                    ? 'bg-success text-white hover:bg-red-500'
-                    : isOrganizer 
-                    ? 'bg-blue-500 text-white hover:bg-red-500'
-                    : 'bg-primary text-white hover:bg-primary/90')
-              }`}
-            >
-              {(rsvpMutation.isPending || removeRsvpMutation.isPending || cancelEventMutation.isPending) ? (
-                <div className="flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  {cancelEventMutation.isPending ? 'Canceling...' : 'Updating...'}
-                </div>
-              ) : isHovering ? (
-                <>
-                  {isOrganizer ? (
-                    <>
-                      <X className="w-4 h-4 mr-2 inline" />
-                      Cancel Event
-                    </>
-                  ) : (localRsvpStatus === 'going' || localRsvpStatus === 'attending') ? (
-                    <>
-                      <Trash2 className="w-4 h-4 mr-2 inline" />
-                      Remove RSVP
-                    </>
-                  ) : (
-                    <>
-                      RSVP - {currentEvent.isFree ? 'Free' : `$${currentEvent.price}`}
-                    </>
-                  )}
-                </>
-              ) : (
-                <>
-                  {isOrganizer ? (
-                    <>
-                      <Check className="w-4 h-4 mr-2 inline" />
-                      Organizing (click to Cancel)
-                    </>
-                  ) : (localRsvpStatus === 'going' || localRsvpStatus === 'attending') ? (
-                    <>
-                      <Check className="w-4 h-4 mr-2 inline" />
-                      Going (click to Ungo)
-                    </>
-                  ) : (
-                    <>
-                      RSVP - {currentEvent.isFree ? 'Free' : `$${currentEvent.price}`}
-                    </>
-                  )}
-                </>
-              )}
-            </button>
-            {user && (isOrganizer || localRsvpStatus === 'going' || localRsvpStatus === 'attending') && (
-              (userRsvp && userRsvp.hasLeftChat) ? (
-                <button 
-                  onClick={() => rejoinChatMutation.mutate()}
-                  disabled={rejoinChatMutation.isPending}
-                  className="bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-lg flex items-center space-x-2 font-medium disabled:opacity-50"
-                >
-                  {rejoinChatMutation.isPending ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  ) : (
-                    <MessageCircle className="w-5 h-5" />
-                  )}
-                  <span>{rejoinChatMutation.isPending ? 'Rejoining...' : 'Rejoin Chat'}</span>
-                </button>
-              ) : (
-                <div className="flex space-x-2">
+          {/* Action Buttons - Only show if showActionButtons is true */}
+          {showActionButtons && (
+            <div className="flex space-x-3 pb-4">
+              <button 
+                onClick={handleButtonClick}
+                onMouseEnter={() => setIsHovering(true)}
+                onMouseLeave={() => setIsHovering(false)}
+                disabled={rsvpMutation.isPending || removeRsvpMutation.isPending || cancelEventMutation.isPending}
+                className={`flex-1 py-3 rounded-lg font-medium transition-all duration-200 ${
+                  (rsvpMutation.isPending || removeRsvpMutation.isPending || cancelEventMutation.isPending) 
+                    ? 'opacity-50 cursor-not-allowed'
+                    : isHovering 
+                    ? ((localRsvpStatus === 'going' || localRsvpStatus === 'attending') ? 'bg-red-500 text-white' : isOrganizer ? 'bg-red-500 text-white' : 'bg-primary text-white')
+                    : ((localRsvpStatus === 'going' || localRsvpStatus === 'attending')
+                      ? 'bg-success text-white hover:bg-red-500'
+                      : isOrganizer 
+                      ? 'bg-blue-500 text-white hover:bg-red-500'
+                      : 'bg-primary text-white hover:bg-primary/90')
+                }`}
+              >
+                {(rsvpMutation.isPending || removeRsvpMutation.isPending || cancelEventMutation.isPending) ? (
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    {cancelEventMutation.isPending ? 'Canceling...' : 'Updating...'}
+                  </div>
+                ) : isHovering ? (
+                  <>
+                    {isOrganizer ? (
+                      <>
+                        <X className="w-4 h-4 mr-2 inline" />
+                        Cancel Event
+                      </>
+                    ) : (localRsvpStatus === 'going' || localRsvpStatus === 'attending') ? (
+                      <>
+                        <Trash2 className="w-4 h-4 mr-2 inline" />
+                        Remove RSVP
+                      </>
+                    ) : (
+                      <>
+                        RSVP - {currentEvent.isFree ? 'Free' : `$${currentEvent.price}`}
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {isOrganizer ? (
+                      <>
+                        <Check className="w-4 h-4 mr-2 inline" />
+                        Organizing (click to Cancel)
+                      </>
+                    ) : (localRsvpStatus === 'going' || localRsvpStatus === 'attending') ? (
+                      <>
+                        <Check className="w-4 h-4 mr-2 inline" />
+                        Going (click to Ungo)
+                      </>
+                    ) : (
+                      <>
+                        RSVP - {currentEvent.isFree ? 'Free' : `$${currentEvent.price}`}
+                      </>
+                    )}
+                  </>
+                )}
+              </button>
+              {user && (isOrganizer || localRsvpStatus === 'going' || localRsvpStatus === 'attending') && (
+                (userRsvp && userRsvp.hasLeftChat) ? (
                   <button 
-                    onClick={() => {
-                      // Set flag for EventDetail modal navigation (different from EventDetailCard)
-                      localStorage.setItem('fromEventDetailModal', 'true');
-                      // Navigate directly to EventContent page like Messages tab does
-                      console.log('Group chat navigation:', `/event/${event.id}?tab=chat`);
-                      setLocation(`/event/${event.id}?tab=chat`);
-                    }}
-                    className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-3 rounded-lg flex items-center space-x-2 font-medium"
+                    onClick={() => rejoinChatMutation.mutate()}
+                    disabled={rejoinChatMutation.isPending}
+                    className="bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-lg flex items-center space-x-2 font-medium disabled:opacity-50"
                   >
-                    <MessageCircle className="w-5 h-5" />
-                    <span>Group Chat</span>
+                    {rejoinChatMutation.isPending ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    ) : (
+                      <MessageCircle className="w-5 h-5" />
+                    )}
+                    <span>{rejoinChatMutation.isPending ? 'Rejoining...' : 'Rejoin Chat'}</span>
                   </button>
-                </div>
-              )
-            )}
-          </div>
+                ) : (
+                  <div className="flex space-x-2">
+                    <button 
+                      onClick={() => {
+                        // Set flag for EventDetail modal navigation (different from EventDetailCard)
+                        localStorage.setItem('fromEventDetailModal', 'true');
+                        // Navigate directly to EventContent page like Messages tab does
+                        console.log('Group chat navigation:', `/event/${event.id}?tab=chat`);
+                        setLocation(`/event/${event.id}?tab=chat`);
+                      }}
+                      className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-3 rounded-lg flex items-center space-x-2 font-medium"
+                    >
+                      <MessageCircle className="w-5 h-5" />
+                      <span>Group Chat</span>
+                    </button>
+                  </div>
+                )
+              )}
+            </div>
+          )}
           </div>
           
           {/* Celebration Animation */}

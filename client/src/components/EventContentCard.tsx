@@ -50,6 +50,7 @@ export default function EventContentCard({
   const [showMembersModal, setShowMembersModal] = useState(false);
   const [selectedSimilarEvent, setSelectedSimilarEvent] = useState<EventWithOrganizer | null>(null);
   const [quotedMessage, setQuotedMessage] = useState<ChatMessageWithUser | null>(null);
+  const [showEventDetail, setShowEventDetail] = useState(false);
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
@@ -472,7 +473,14 @@ export default function EventContentCard({
               </button>
               <div>
                 <h3 className="font-semibold text-lg">
-                  {event.isPrivateChat ? 'Private Chat' : event.title}
+                  {event.isPrivateChat ? 'Private Chat' : (
+                    <button
+                      onClick={() => setShowEventDetail(true)}
+                      className="text-left hover:opacity-80 transition-opacity cursor-pointer"
+                    >
+                      {event.title}
+                    </button>
+                  )}
                 </h3>
                 <div className="flex items-center space-x-2">
                   {!event.isPrivateChat && (
@@ -1041,6 +1049,16 @@ export default function EventContentCard({
           event={selectedSimilarEvent}
           onClose={() => setSelectedSimilarEvent(null)}
           fromPage="event-content"
+        />
+      )}
+
+      {/* EventDetail Modal for Current Event (from title click) */}
+      {showEventDetail && (
+        <EventDetail
+          event={event}
+          onClose={() => setShowEventDetail(false)}
+          fromPage="event-content"
+          showActionButtons={false}
         />
       )}
     </div>
