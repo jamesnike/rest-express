@@ -141,6 +141,7 @@ EventConnect is a mobile-first event discovery and management platform that allo
 
 ## Changelog
 
+- July 13, 2025. IMPROVED REJOIN CHAT UX: Enhanced rejoin chat functionality to show success banner instead of navigation errors. Users now see "Rejoined Successfully!" message and can click Group Chat button to access EventContent. Removed problematic inline navigation callbacks that were causing errors.
 - July 13, 2025. STREAMLINED USER CONFIRMATIONS: Removed duplicate confirmation dialogs for destructive actions. "Cancel Event" and "Remove RSVP" actions now show single confirmation instead of double confirmation for better user experience. Updated both EventDetail and EventCard components to eliminate redundant "Final confirmation" dialogs.
 - July 13, 2025. FIXED PRIVATE CHAT DUPLICATION: Resolved issue where private chats appeared twice in Messages tab. Modified getUserEventIds to exclude private chats from regular event notifications, while creating separate notification system for private chats. Private chats now appear only once in Messages tab while maintaining proper notification functionality.
 - July 13, 2025. MOBILE APP DEVELOPMENT READY: Successfully set up complete mobile development environment with Capacitor. Android and iOS platforms configured with all required plugins (Camera, Geolocation, Push Notifications, etc.). Mobile build workflow established with proper asset syncing. Project ready for native mobile app development and deployment to app stores.

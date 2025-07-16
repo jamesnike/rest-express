@@ -544,18 +544,11 @@ export default function EventDetail({ event, onClose, showGroupChatButton = fals
       queryClient.invalidateQueries({ queryKey: ['/api/notifications/unread'] });
       queryClient.invalidateQueries({ queryKey: ['/api/events', event.id, 'rsvp', user?.id] });
       
-
-      
       toast({
-        title: "Rejoined Chat",
-        description: "You've successfully rejoined the group chat!",
-        duration: 2000,
+        title: "Rejoined Successfully!",
+        description: "You can now access the group chat. Click the Group Chat button to join the conversation.",
+        duration: 3000,
       });
-      
-      // Navigate to the chat after rejoining
-      if (onNavigateToContent) {
-        onNavigateToContent();
-      }
     },
     onError: (error) => {
       console.error('Failed to rejoin chat:', error);
@@ -836,17 +829,7 @@ export default function EventDetail({ event, onClose, showGroupChatButton = fals
             {user && (isOrganizer || localRsvpStatus === 'going' || localRsvpStatus === 'attending') && (
               (userRsvp && userRsvp.hasLeftChat) ? (
                 <button 
-                  onClick={() => {
-                    rejoinChatMutation.mutate(undefined, {
-                      onSuccess: () => {
-                        // Set flag for EventDetail modal navigation (different from EventDetailCard)
-                        localStorage.setItem('fromEventDetailModal', 'true');
-                        // Navigate directly to EventContent page like Messages tab does
-                        console.log('Rejoin chat navigation:', `/event/${event.id}?tab=chat`);
-                        setLocation(`/event/${event.id}?tab=chat`);
-                      }
-                    });
-                  }}
+                  onClick={() => rejoinChatMutation.mutate()}
                   disabled={rejoinChatMutation.isPending}
                   className="bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-lg flex items-center space-x-2 font-medium disabled:opacity-50"
                 >
