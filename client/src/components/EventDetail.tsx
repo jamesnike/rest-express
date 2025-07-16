@@ -614,7 +614,7 @@ export default function EventDetail({ event, onClose, showGroupChatButton = fals
 
   return (
     <div className={`fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4`}>
-      <div className={`bg-white rounded-lg shadow-xl max-w-sm w-full h-[85vh] overflow-hidden transform transition-transform duration-300 ${
+      <div className={`bg-white rounded-lg shadow-xl max-w-sm mx-auto w-full h-[85vh] overflow-hidden transform transition-transform duration-300 ${
         isClosing ? 'scale-95 opacity-0' : 'scale-100 opacity-100'
       }`}>
         <div className="relative h-full flex flex-col">
