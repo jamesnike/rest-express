@@ -1106,6 +1106,8 @@ User's question: ${message}`;
         try {
           const fetch = (await import('node-fetch')).default;
           
+          console.log("Generating TTS audio with Inworld API...");
+          
           const ttsResponse = await fetch('https://api.inworld.ai/tts/v1/voice', {
             method: 'POST',
             headers: {
@@ -1114,7 +1116,7 @@ User's question: ${message}`;
             },
             body: JSON.stringify({
               text: aiResponse,
-              voiceId: "Ashley", // Pleasant female voice
+              voiceId: "Ashley",
               modelId: "inworld-tts-1"
             })
           });
@@ -1122,14 +1124,17 @@ User's question: ${message}`;
           if (ttsResponse.ok) {
             const ttsResult = await ttsResponse.json();
             audioContent = ttsResult.audioContent;
-            console.log("Generated TTS audio for customer service response");
+            console.log("Successfully generated TTS audio for customer service response");
           } else {
-            console.error("TTS generation failed:", ttsResponse.status, await ttsResponse.text());
+            const errorText = await ttsResponse.text();
+            console.error("TTS generation failed:", ttsResponse.status, errorText);
           }
         } catch (ttsError) {
           console.error("Error generating TTS:", ttsError);
           // Continue without audio if TTS fails
         }
+      } else if (includeVoice) {
+        console.log("Voice requested but INWORLD_API_KEY not available");
       }
 
       res.json({ 
