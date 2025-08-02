@@ -1037,6 +1037,75 @@ Please respond with just the signature text, nothing else.`;
     }
   });
 
+  // AI Customer Service endpoint
+  app.post('/api/ai/customer-service', isAuthenticated, async (req: any, res) => {
+    try {
+      const { message, eventId, eventData } = req.body;
+      
+      if (!message || typeof message !== 'string') {
+        return res.status(400).json({ message: "Message is required" });
+      }
+      
+      if (!eventId || !eventData) {
+        return res.status(400).json({ message: "Event ID and event data are required" });
+      }
+
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+      // Create a comprehensive prompt with event information
+      const eventInfo = `
+Event Details:
+- Title: ${eventData.title}
+- Description: ${eventData.description}
+- Date: ${eventData.date}
+- Time: ${eventData.time}
+- Location: ${eventData.location}
+- Category: ${eventData.category}
+- Subcategory: ${eventData.subCategory}
+- Price: ${eventData.isFree ? 'Free' : `$${eventData.price}`}
+- Organizer: ${eventData.organizer?.firstName || ''} ${eventData.organizer?.lastName || 'Anonymous'}
+- RSVP Count: ${eventData.rsvpCount} people attending
+- Event Image: ${eventData.eventImageUrl ? 'Available' : 'Not provided'}
+`;
+
+      const systemPrompt = `You are an AI assistant for EventConnect, helping users with questions about a specific event. 
+
+You have access to the following event information:
+${eventInfo}
+
+Your role is to:
+1. Answer questions about this specific event based on the provided information
+2. Be helpful, friendly, and informative
+3. If asked about information not provided, politely say you don't have that specific detail
+4. Provide helpful suggestions related to the event
+5. Keep responses concise but informative
+6. Maintain a conversational, enthusiastic tone about the event
+
+User's question: ${message}`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: message }
+        ],
+        max_tokens: 500,
+        temperature: 0.7,
+      });
+
+      const aiResponse = response.choices[0].message.content?.trim();
+      
+      if (!aiResponse) {
+        throw new Error("Empty response from OpenAI");
+      }
+
+      res.json({ response: aiResponse });
+    } catch (error) {
+      console.error("Error in AI customer service:", error);
+      res.status(500).json({ message: "Failed to process your question. Please try again." });
+    }
+  });
+
   // Skipped events routes
   app.post('/api/events/:id/skip', isAuthenticated, async (req: any, res) => {
     try {

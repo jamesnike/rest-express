@@ -12,6 +12,7 @@ import Profile from "@/pages/profile";
 import MyEvents from "@/pages/my-events";
 import Browse from "@/pages/browse";
 import EventContentPage from "@/pages/event-content";
+import CustomerService from "@/pages/customer-service";
 
 function Router() {
   const { isAuthenticated, isLoading, user, error, refetch } = useAuth();
@@ -54,6 +55,7 @@ function Router() {
         <Route path="/browse" component={Browse} />
         <Route path="/event/:eventId" component={EventContentPage} />
         <Route path="/event-content/:eventId" component={EventContentPage} />
+        <Route path="/customer-service/:eventId" component={CustomerService} />
         <Route path="*" component={NotFound} />
       </Switch>
     );
