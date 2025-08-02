@@ -1040,7 +1040,7 @@ Please respond with just the signature text, nothing else.`;
   // AI Customer Service endpoint
   app.post('/api/ai/customer-service', isAuthenticated, async (req: any, res) => {
     try {
-      const { message, eventId, eventData } = req.body;
+      const { message, eventId, eventData, includeVoice } = req.body;
       
       if (!message || typeof message !== 'string') {
         return res.status(400).json({ message: "Message is required" });
@@ -1078,7 +1078,7 @@ Your role is to:
 2. Be helpful, friendly, and informative
 3. If asked about information not provided, politely say you don't have that specific detail
 4. Provide helpful suggestions related to the event
-5. Keep responses concise but informative
+5. Keep responses concise but informative (max 100 words for voice responses)
 6. Maintain a conversational, enthusiastic tone about the event
 
 User's question: ${message}`;
@@ -1089,7 +1089,7 @@ User's question: ${message}`;
           { role: "system", content: systemPrompt },
           { role: "user", content: message }
         ],
-        max_tokens: 500,
+        max_tokens: includeVoice ? 200 : 500, // Shorter responses for voice
         temperature: 0.7,
       });
 
@@ -1099,7 +1099,43 @@ User's question: ${message}`;
         throw new Error("Empty response from OpenAI");
       }
 
-      res.json({ response: aiResponse });
+      let audioContent = null;
+
+      // Generate TTS audio if voice is requested and Inworld API key is available
+      if (includeVoice && process.env.INWORLD_API_KEY) {
+        try {
+          const fetch = (await import('node-fetch')).default;
+          
+          const ttsResponse = await fetch('https://api.inworld.ai/tts/v1/voice', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Basic ${process.env.INWORLD_API_KEY}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              text: aiResponse,
+              voiceId: "Ashley", // Pleasant female voice
+              modelId: "inworld-tts-1"
+            })
+          });
+
+          if (ttsResponse.ok) {
+            const ttsResult = await ttsResponse.json();
+            audioContent = ttsResult.audioContent;
+            console.log("Generated TTS audio for customer service response");
+          } else {
+            console.error("TTS generation failed:", ttsResponse.status, await ttsResponse.text());
+          }
+        } catch (ttsError) {
+          console.error("Error generating TTS:", ttsError);
+          // Continue without audio if TTS fails
+        }
+      }
+
+      res.json({ 
+        response: aiResponse,
+        audioContent: audioContent
+      });
     } catch (error) {
       console.error("Error in AI customer service:", error);
       res.status(500).json({ message: "Failed to process your question. Please try again." });

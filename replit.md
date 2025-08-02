@@ -26,6 +26,7 @@ Preferred communication style: Simple, everyday language.
 - **Event Management**: Supports various categories (Music, Sports, Arts, Food, Tech, Business, Education, Health & Wellness, Entertainment, Community, Outdoor, Family, Lifestyle), RSVP system (attending/maybe/not attending), free and paid events, address-based locations, and image uploads. Events can have subcategories for detailed filtering.
 - **Messaging**: Real-time WebSocket messaging with unread notifications, message quoting, activity-based chat reordering, and support for both group and 1-on-1 private chats.
 - **User Profiles**: Displays user interests, personality traits, and AI-generated personal signatures. Includes AnimeAvatar generation using OpenAI DALL-E 3.
+- **AI Customer Service**: Voice-enabled AI assistant with Inworld TTS and browser Speech Recognition. Features speech-to-text input, text-to-speech output, voice toggle controls, and event-specific knowledge for answering user questions about event details, location, pricing, and more.
 - **Event Discovery**: Features a Bumble-style swipe interface for event discovery, a dedicated browse page with category and time filters, and a "Similar Events" tab.
 - **Mobile Development**: Integrated with Capacitor for native Android and iOS app deployment, utilizing core mobile plugins like geolocation, camera, and push notifications.
 
@@ -34,4 +35,4 @@ Preferred communication style: Simple, everyday language.
 - **Authentication**: Replit Auth service.
 - **UI/Icons**: Shadcn/UI, Lucide React icons.
 - **Animations**: Framer Motion.
-- **AI**: OpenAI API (for DALL-E 3 avatar generation and GPT-4o for personal signatures).
+- **AI**: OpenAI API (for DALL-E 3 avatar generation, GPT-4o for personal signatures and customer service), Inworld AI TTS (for voice synthesis).
