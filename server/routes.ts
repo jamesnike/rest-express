@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertEventSchema, externalEventSchema, insertRsvpSchema, insertChatMessageSchema, chatMessages, users } from "@shared/schema";
+import { insertEventSchema, externalEventSchema, insertRsvpSchema, insertChatMessageSchema, chatMessages, users, type EventWithOrganizer } from "@shared/schema";
 import { z } from "zod";
 import OpenAI from "openai";
 import { db } from "./db";
@@ -113,7 +113,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate required fields using external event schema
       const eventData = externalEventSchema.omit({ organizerId: true }).parse(req.body);
       
-      const event = await storage.createExternalEvent(eventData);
+      const event = await storage.createExternalEvent({
+        ...eventData,
+        latitude: eventData.latitude === null ? undefined : eventData.latitude,
+        longitude: eventData.longitude === null ? undefined : eventData.longitude,
+        price: eventData.price === null ? undefined : eventData.price,
+        isFree: eventData.isFree === null ? undefined : eventData.isFree,
+        subCategory: eventData.subCategory === null ? undefined : eventData.subCategory,
+        maxAttendees: eventData.maxAttendees === null ? undefined : eventData.maxAttendees,
+        capacity: eventData.capacity === null ? undefined : eventData.capacity,
+        parkingInfo: eventData.parkingInfo === null ? undefined : eventData.parkingInfo,
+        meetingPoint: eventData.meetingPoint === null ? undefined : eventData.meetingPoint,
+        duration: eventData.duration === null ? undefined : eventData.duration,
+        whatToBring: eventData.whatToBring === null ? undefined : eventData.whatToBring,
+        specialNotes: eventData.specialNotes === null ? undefined : eventData.specialNotes,
+        requirements: eventData.requirements === null ? undefined : eventData.requirements,
+        contactInfo: eventData.contactInfo === null ? undefined : eventData.contactInfo,
+        cancellationPolicy: eventData.cancellationPolicy === null ? undefined : eventData.cancellationPolicy,
+        eventImageUrl: eventData.eventImageUrl === null ? undefined : eventData.eventImageUrl
+      });
       res.status(201).json({ 
         success: true, 
         eventId: event.id,
@@ -535,16 +553,19 @@ Please respond with just the signature text, nothing else.`;
       console.error("Error generating signature:", error);
       
       // Handle specific OpenAI errors
-      if (error.status === 429) {
-        return res.status(429).json({ 
-          message: "OpenAI API quota exceeded. Please check your OpenAI billing and usage limits." 
-        });
-      }
-      
-      if (error.status === 401) {
-        return res.status(401).json({ 
-          message: "OpenAI API key is invalid. Please check your API key configuration." 
-        });
+      if (error instanceof Error && 'status' in error) {
+        const apiError = error as any;
+        if (apiError.status === 429) {
+          return res.status(429).json({ 
+            message: "OpenAI API quota exceeded. Please check your OpenAI billing and usage limits." 
+          });
+        }
+        
+        if (apiError.status === 401) {
+          return res.status(401).json({ 
+            message: "OpenAI API key is invalid. Please check your API key configuration." 
+          });
+        }
       }
       
       res.status(500).json({ message: "Failed to generate signature. Please try again later." });
@@ -980,7 +1001,7 @@ Please respond with just the signature text, nothing else.`;
       });
 
       // Get base64 data directly from OpenAI (faster than downloading)
-      const base64Data = imageResponse.data[0].b64_json;
+      const base64Data = imageResponse.data?.[0]?.b64_json;
       if (!base64Data) {
         throw new Error("No base64 data received from OpenAI");
       }
@@ -1122,7 +1143,7 @@ User's question: ${message}`;
           });
 
           if (ttsResponse.ok) {
-            const ttsResult = await ttsResponse.json();
+            const ttsResult = await ttsResponse.json() as { audioContent?: string };
             audioContent = ttsResult.audioContent;
             console.log("Successfully generated TTS audio for customer service response");
           } else {
