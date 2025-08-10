@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupJWTAuth, requireAuth, optionalAuth } from "./jwtAuth";
 import { insertEventSchema, externalEventSchema, insertRsvpSchema, insertChatMessageSchema, chatMessages, users, type EventWithOrganizer } from "@shared/schema";
 import { z } from "zod";
 import OpenAI from "openai";
@@ -10,11 +10,11 @@ import { db } from "./db";
 import { eq } from "drizzle-orm";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Auth middleware
-  await setupAuth(app);
+  // Auth setup
+  await setupJWTAuth(app);
 
   // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  app.get('/api/auth/user', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -43,9 +43,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/events', async (req, res) => {
+  app.get('/api/events', optionalAuth, async (req: any, res) => {
     try {
-      const userId = (req.user as any)?.claims?.sub;
+      const userId = req.user?.claims?.sub;
       const category = req.query.category as string | undefined;
       const timeFilter = req.query.timeFilter as string | undefined;
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
@@ -59,10 +59,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/events/:id', async (req, res) => {
+  app.get('/api/events/:id', optionalAuth, async (req: any, res) => {
     try {
       const eventId = parseInt(req.params.id);
-      const userId = (req.user as any)?.claims?.sub;
+      const userId = req.user?.claims?.sub;
       
       const event = await storage.getEvent(eventId, userId);
       if (!event) {
@@ -88,7 +88,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/events', isAuthenticated, async (req: any, res) => {
+  app.post('/api/events', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const eventData = insertEventSchema.parse({
@@ -173,7 +173,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/events/:id', isAuthenticated, async (req: any, res) => {
+  app.put('/api/events/:id', requireAuth, async (req: any, res) => {
     try {
       const eventId = parseInt(req.params.id);
       const userId = req.user.claims.sub;
@@ -197,7 +197,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/events/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/events/:id', requireAuth, async (req: any, res) => {
     try {
       const eventId = parseInt(req.params.id);
       const userId = req.user.claims.sub;
@@ -217,7 +217,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // User events routes
-  app.get('/api/users/:userId/events', isAuthenticated, async (req: any, res) => {
+  app.get('/api/users/:userId/events', requireAuth, async (req: any, res) => {
     try {
       const userId = req.params.userId;
       const type = req.query.type as 'organized' | 'attending' || 'organized';
@@ -237,7 +237,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Group chats - events where user can participate in chat (hasn't left chat) + private chats
-  app.get('/api/users/:userId/group-chats', isAuthenticated, async (req: any, res) => {
+  app.get('/api/users/:userId/group-chats', requireAuth, async (req: any, res) => {
     try {
       const userId = req.params.userId;
       
@@ -294,7 +294,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // RSVP routes
-  app.post('/api/events/:id/rsvp', isAuthenticated, async (req: any, res) => {
+  app.post('/api/events/:id/rsvp', requireAuth, async (req: any, res) => {
     try {
       const eventId = parseInt(req.params.id);
       const userId = req.user.claims.sub;
@@ -329,7 +329,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/events/:id/rsvp', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/events/:id/rsvp', requireAuth, async (req: any, res) => {
     try {
       const eventId = parseInt(req.params.id);
       const userId = req.user.claims.sub;
@@ -342,7 +342,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/events/:id/leave-chat', isAuthenticated, async (req: any, res) => {
+  app.post('/api/events/:id/leave-chat', requireAuth, async (req: any, res) => {
     try {
       const eventId = parseInt(req.params.id);
       const userId = req.user.claims.sub;
@@ -357,7 +357,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/events/:id/rejoin-chat', isAuthenticated, async (req: any, res) => {
+  app.post('/api/events/:id/rejoin-chat', requireAuth, async (req: any, res) => {
     try {
       const eventId = parseInt(req.params.id);
       const userId = req.user.claims.sub;
@@ -374,7 +374,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get user's RSVP status for an event including hasLeftChat
-  app.get('/api/events/:id/rsvp-status', isAuthenticated, async (req: any, res) => {
+  app.get('/api/events/:id/rsvp-status', requireAuth, async (req: any, res) => {
     try {
       const eventId = parseInt(req.params.id);
       const userId = req.user.claims.sub;
@@ -414,7 +414,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update user profile
-  app.put('/api/users/profile', isAuthenticated, async (req: any, res) => {
+  app.put('/api/users/profile', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { location, interests, personality } = req.body;
@@ -438,7 +438,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Generate AI signature based on user's interests and personality
-  app.post('/api/users/generate-signature', isAuthenticated, async (req: any, res) => {
+  app.post('/api/users/generate-signature', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -573,7 +573,7 @@ Please respond with just the signature text, nothing else.`;
   });
 
   // Private Chat routes
-  app.post('/api/private-chats', isAuthenticated, async (req: any, res) => {
+  app.post('/api/private-chats', requireAuth, async (req: any, res) => {
     try {
       const currentUserId = req.user.claims.sub;
       const { otherUserId } = req.body;
@@ -602,7 +602,7 @@ Please respond with just the signature text, nothing else.`;
     }
   });
 
-  app.get('/api/private-chats/:otherUserId', isAuthenticated, async (req: any, res) => {
+  app.get('/api/private-chats/:otherUserId', requireAuth, async (req: any, res) => {
     try {
       const currentUserId = req.user.claims.sub;
       const otherUserId = req.params.otherUserId;
@@ -629,7 +629,7 @@ Please respond with just the signature text, nothing else.`;
   });
 
   // Chat routes
-  app.get('/api/events/:id/messages', isAuthenticated, async (req: any, res) => {
+  app.get('/api/events/:id/messages', requireAuth, async (req: any, res) => {
     try {
       const eventId = parseInt(req.params.id);
       const userId = req.user.claims.sub;
@@ -649,7 +649,7 @@ Please respond with just the signature text, nothing else.`;
     }
   });
 
-  app.post('/api/events/:id/messages', isAuthenticated, async (req: any, res) => {
+  app.post('/api/events/:id/messages', requireAuth, async (req: any, res) => {
     try {
       const eventId = parseInt(req.params.id);
       const userId = req.user.claims.sub;
@@ -738,7 +738,7 @@ Please respond with just the signature text, nothing else.`;
     }
   });
 
-  app.delete('/api/events/:eventId/messages/:messageId', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/events/:eventId/messages/:messageId', requireAuth, async (req: any, res) => {
     try {
       const eventId = parseInt(req.params.eventId);
       const messageId = parseInt(req.params.messageId);
@@ -759,7 +759,7 @@ Please respond with just the signature text, nothing else.`;
   });
 
   // Favorite message routes
-  app.get('/api/events/:id/favorites', isAuthenticated, async (req: any, res) => {
+  app.get('/api/events/:id/favorites', requireAuth, async (req: any, res) => {
     try {
       const eventId = parseInt(req.params.id);
       const userId = req.user.claims.sub;
@@ -778,7 +778,7 @@ Please respond with just the signature text, nothing else.`;
     }
   });
 
-  app.post('/api/events/:eventId/messages/:messageId/favorite', isAuthenticated, async (req: any, res) => {
+  app.post('/api/events/:eventId/messages/:messageId/favorite', requireAuth, async (req: any, res) => {
     try {
       const eventId = parseInt(req.params.eventId);
       const messageId = parseInt(req.params.messageId);
@@ -811,7 +811,7 @@ Please respond with just the signature text, nothing else.`;
     }
   });
 
-  app.delete('/api/events/:eventId/messages/:messageId/favorite', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/events/:eventId/messages/:messageId/favorite', requireAuth, async (req: any, res) => {
     try {
       const eventId = parseInt(req.params.eventId);
       const messageId = parseInt(req.params.messageId);
@@ -832,7 +832,7 @@ Please respond with just the signature text, nothing else.`;
   });
 
   // Saved events routes
-  app.get('/api/users/:userId/saved-events', isAuthenticated, async (req: any, res) => {
+  app.get('/api/users/:userId/saved-events', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const requestedUserId = req.params.userId;
@@ -850,7 +850,7 @@ Please respond with just the signature text, nothing else.`;
     }
   });
 
-  app.get('/api/saved-events', isAuthenticated, async (req: any, res) => {
+  app.get('/api/saved-events', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       
@@ -862,7 +862,7 @@ Please respond with just the signature text, nothing else.`;
     }
   });
 
-  app.post('/api/events/:eventId/save', isAuthenticated, async (req: any, res) => {
+  app.post('/api/events/:eventId/save', requireAuth, async (req: any, res) => {
     try {
       const eventId = parseInt(req.params.eventId);
       const userId = req.user.claims.sub;
@@ -887,7 +887,7 @@ Please respond with just the signature text, nothing else.`;
     }
   });
 
-  app.delete('/api/events/:eventId/save', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/events/:eventId/save', requireAuth, async (req: any, res) => {
     try {
       const eventId = parseInt(req.params.eventId);
       const userId = req.user.claims.sub;
@@ -906,7 +906,7 @@ Please respond with just the signature text, nothing else.`;
     }
   });
 
-  app.get('/api/events/:eventId/saved-status', isAuthenticated, async (req: any, res) => {
+  app.get('/api/events/:eventId/saved-status', requireAuth, async (req: any, res) => {
     try {
       const eventId = parseInt(req.params.eventId);
       const userId = req.user.claims.sub;
@@ -926,7 +926,7 @@ Please respond with just the signature text, nothing else.`;
   });
 
   // Notification endpoints
-  app.get('/api/notifications/unread', isAuthenticated, async (req: any, res) => {
+  app.get('/api/notifications/unread', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const unreadCounts = await storage.getUnreadCounts(userId);
@@ -937,7 +937,7 @@ Please respond with just the signature text, nothing else.`;
     }
   });
 
-  app.post('/api/events/:id/mark-read', isAuthenticated, async (req: any, res) => {
+  app.post('/api/events/:id/mark-read', requireAuth, async (req: any, res) => {
     try {
       const eventId = parseInt(req.params.id);
       const userId = req.user.claims.sub;
@@ -964,7 +964,7 @@ Please respond with just the signature text, nothing else.`;
   });
 
   // Avatar generation and update routes
-  app.post('/api/generate-avatar', isAuthenticated, async (req: any, res) => {
+  app.post('/api/generate-avatar', requireAuth, async (req: any, res) => {
     try {
       const { prompt } = req.body;
       
@@ -1031,7 +1031,7 @@ Please respond with just the signature text, nothing else.`;
     }
   });
 
-  app.post('/api/update-avatar', isAuthenticated, async (req: any, res) => {
+  app.post('/api/update-avatar', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { customAvatarUrl } = req.body;
@@ -1059,7 +1059,7 @@ Please respond with just the signature text, nothing else.`;
   });
 
   // AI Customer Service endpoint
-  app.post('/api/ai/customer-service', isAuthenticated, async (req: any, res) => {
+  app.post('/api/ai/customer-service', requireAuth, async (req: any, res) => {
     try {
       const { message, eventId, eventData, includeVoice } = req.body;
       
@@ -1169,7 +1169,7 @@ User's question: ${message}`;
   });
 
   // Skipped events routes
-  app.post('/api/events/:id/skip', isAuthenticated, async (req: any, res) => {
+  app.post('/api/events/:id/skip', requireAuth, async (req: any, res) => {
     try {
       const eventId = parseInt(req.params.id);
       const userId = req.user.claims.sub;
@@ -1182,7 +1182,7 @@ User's question: ${message}`;
     }
   });
 
-  app.post('/api/events/increment-shown', isAuthenticated, async (req: any, res) => {
+  app.post('/api/events/increment-shown', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       
