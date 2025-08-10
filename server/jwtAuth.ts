@@ -52,16 +52,33 @@ export async function setupJWTAuth(app: Express) {
         return res.status(400).json({ message: "Email is required" });
       }
 
-      // Create or update user in database
-      const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      await storage.upsertUser({
-        id: userId,
-        email,
-        firstName,
-        lastName,
-        profileImageUrl,
-        animeAvatarSeed: `seed_${userId}`,
-      });
+      // Try to get existing user first
+      let user = await storage.getUserByEmail(email);
+      let userId;
+      
+      if (user) {
+        // User exists, use existing ID and update other fields
+        userId = user.id;
+        await storage.upsertUser({
+          id: userId,
+          email,
+          firstName,
+          lastName,
+          profileImageUrl,
+          animeAvatarSeed: user.animeAvatarSeed || `seed_${userId}`,
+        });
+      } else {
+        // Create new user
+        userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        await storage.upsertUser({
+          id: userId,
+          email,
+          firstName,
+          lastName,
+          profileImageUrl,
+          animeAvatarSeed: `seed_${userId}`,
+        });
+      }
 
       // Generate JWT token
       const token = generateToken({
