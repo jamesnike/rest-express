@@ -37,6 +37,18 @@ Preferred communication style: Simple, everyday language.
 - **Animations**: Framer Motion.
 - **AI**: OpenAI API (for DALL-E 3 avatar generation, GPT-4o for personal signatures and customer service), Inworld AI TTS (for voice synthesis).
 
+## API Documentation
+Comprehensive backend API documentation has been created in `api-documentation.md` for mobile frontend integration. The API includes:
+- Authentication endpoints (Replit Auth with session cookies)
+- Event CRUD operations with rich metadata
+- Event discovery and browsing with smart filtering
+- RSVP and favorites management
+- Real-time messaging with WebSocket support
+- AI customer service with optional voice responses
+- User profiles with AI-generated avatars and signatures
+- Notification system for unread messages
+- External API for programmatic event creation
+
 ## Recent Changes
 ### 2025-02-02 - Application Debugging and Sample Events
 - Fixed TypeScript compilation errors in `server/routes.ts`:
