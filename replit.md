@@ -49,6 +49,8 @@ Comprehensive backend API documentation has been created in `api-documentation.m
 - Notification system for unread messages
 - External API for programmatic event creation
 
+Additional documentation in `external-api-docs.md` covers external access requirements for mobile frontend integration outside of Replit environment, including production deployment considerations and mobile-specific implementation examples.
+
 ## Recent Changes
 ### 2025-02-02 - Application Debugging and Sample Events
 - Fixed TypeScript compilation errors in `server/routes.ts`:

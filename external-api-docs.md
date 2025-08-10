@@ -1,236 +1,197 @@
-# External Event API Documentation
+# EventConnect External Mobile API Integration
 
-Your partner can now post events to EventConnect using the external API endpoint. This API is designed specifically for web crawl jobs and doesn't require authentication.
+## Backend URL Access
 
-## API Endpoint
-
-**POST** `/api/external/events`
-
-**Base URL:** Your Replit app URL (e.g., `https://your-app.replit.app`)
-
-## Request Format
-
-### Headers
+### Development Environment
 ```
-Content-Type: application/json
+https://ba3a646f-8137-44c9-b8da-3a42bf8c9d50-00-12thhwhpja8kw.kirk.replit.dev
 ```
 
-### Required Fields
-```json
-{
-  "title": "Event Title",
-  "description": "Event description",
-  "category": "Music | Sports | Arts | Food | Tech",
-  "date": "2025-07-15",
-  "time": "19:00:00",
-  "location": "Event location address"
-}
+### Production Environment (After Deployment)
+```
+https://your-app-name.replit.app
 ```
 
-### Optional Fields
-```json
-{
-  "organizerEmail": "organizer@example.com",
-  "source": "EventBrite",
-  "sourceUrl": "https://eventbrite.com/event/123",
-  "latitude": "37.7749",
-  "longitude": "-122.4194",
-  "price": "25.00",
-  "isFree": false,
-  "eventImageUrl": "https://example.com/image.jpg",
-  "maxAttendees": 100,
-  "capacity": 150,
-  "parkingInfo": "Free parking available",
-  "meetingPoint": "Main entrance",
-  "duration": "2 hours",
-  "whatToBring": "Comfortable shoes",
-  "specialNotes": "Additional event information",
-  "requirements": "18+ only",
-  "contactInfo": "contact@example.com",
-  "cancellationPolicy": "Full refund if cancelled 24h before"
-}
-```
+## Mobile App Configuration
 
-## Response Format
-
-### Success Response (201 Created)
-```json
-{
-  "success": true,
-  "eventId": 123,
-  "message": "Event created successfully",
-  "event": {
-    "id": 123,
-    "title": "Event Title",
-    "organizerId": "external_1234567890_abc123",
-    // ... other event fields
-  }
-}
-```
-
-### Error Response (400 Bad Request)
-```json
-{
-  "success": false,
-  "message": "Invalid event data",
-  "errors": [
-    {
-      "code": "invalid_type",
-      "expected": "string",
-      "received": "undefined",
-      "path": ["title"],
-      "message": "Required"
-    }
-  ]
-}
-```
-
-## Example Usage
-
-### cURL Example
-```bash
-curl -X POST https://your-app.replit.app/api/external/events \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "Jazz Night at Blue Note",
-    "description": "An evening of smooth jazz featuring local artists",
-    "category": "Music",
-    "date": "2025-07-15",
-    "time": "20:00:00",
-    "location": "Blue Note Jazz Club, 123 Music St, San Francisco, CA",
-    "organizerEmail": "events@bluenote.com",
-    "source": "Blue Note Website",
-    "sourceUrl": "https://bluenote.com/events/jazz-night",
-    "price": "35.00",
-    "isFree": false,
-    "duration": "3 hours"
-  }'
-```
-
-### Python Example
-```python
-import requests
-import json
-
-url = "https://your-app.replit.app/api/external/events"
-
-event_data = {
-    "title": "Tech Meetup: AI in Web Development",
-    "description": "Join us for a discussion on AI tools in modern web development",
-    "category": "Tech",
-    "date": "2025-07-20",
-    "time": "18:30:00",
-    "location": "TechHub, 456 Innovation Dr, San Francisco, CA",
-    "organizerEmail": "admin@techhub.com",
-    "source": "Meetup.com",
-    "sourceUrl": "https://meetup.com/tech-ai-meetup",
-    "isFree": True,
-    "maxAttendees": 50
-}
-
-headers = {"Content-Type": "application/json"}
-
-response = requests.post(url, headers=headers, data=json.dumps(event_data))
-
-if response.status_code == 201:
-    result = response.json()
-    print(f"Event created successfully! ID: {result['eventId']}")
-else:
-    print(f"Error: {response.status_code}")
-    print(response.json())
-```
-
-### JavaScript/Node.js Example
+### Base API Configuration
 ```javascript
-const axios = require('axios');
+// Mobile app config
+const API_BASE_URL = 'https://ba3a646f-8137-44c9-b8da-3a42bf8c9d50-00-12thhwhpja8kw.kirk.replit.dev';
 
-const createEvent = async (eventData) => {
+// API Client setup
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  withCredentials: true, // Important for session cookies
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  }
+});
+```
+
+### Authentication Flow for Mobile
+Since this uses session-based auth with Replit Auth, mobile apps need to handle the web-based auth flow:
+
+```javascript
+// Option 1: WebView Authentication
+const authenticateUser = () => {
+  // Open WebView to: ${API_BASE_URL}/api/login
+  // Handle redirect back to app after auth success
+  // Session cookie will be automatically stored
+};
+
+// Option 2: Check Authentication Status
+const checkAuthStatus = async () => {
   try {
-    const response = await axios.post(
-      'https://your-app.replit.app/api/external/events',
-      eventData,
-      {
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      }
-    );
-    
-    console.log('Event created:', response.data);
-    return response.data;
+    const response = await apiClient.get('/api/auth/user');
+    return response.data; // User is authenticated
   } catch (error) {
-    console.error('Error creating event:', error.response?.data || error.message);
+    if (error.response?.status === 401) {
+      // User needs to authenticate
+      return null;
+    }
     throw error;
   }
 };
-
-// Usage
-const eventData = {
-  title: "Food Festival Downtown",
-  description: "A celebration of local cuisine with 20+ food vendors",
-  category: "Food",
-  date: "2025-07-25",
-  time: "11:00:00",
-  location: "Downtown Plaza, 789 Main St, San Francisco, CA",
-  source: "City Events",
-  isFree: true
-};
-
-createEvent(eventData);
 ```
 
-## Field Details
+## Key Mobile API Endpoints
 
-### Required Fields
-- **title**: String (max 255 chars) - Event name
-- **description**: String - Detailed event description
-- **category**: String - Must be one of: "Music", "Sports", "Arts", "Food", "Tech"
-- **date**: String - Format: "YYYY-MM-DD"
-- **time**: String - Format: "HH:MM:SS" (24-hour format)
-- **location**: String (max 255 chars) - Event address
+### Core Event Operations
+```javascript
+// Get all events
+const getEvents = async (filters = {}) => {
+  const params = new URLSearchParams(filters);
+  return await apiClient.get(`/api/events?${params}`);
+};
 
-### Optional Fields
-- **organizerEmail**: String - If provided, will link to existing user or create new organizer
-- **source**: String - Name of the source website (e.g., "EventBrite", "Meetup")
-- **sourceUrl**: String - Original event URL
-- **latitude/longitude**: String - GPS coordinates for precise location
-- **price**: String - Event price (e.g., "25.00")
-- **isFree**: Boolean - Whether the event is free (defaults to true if price is "0.00")
-- **eventImageUrl**: String - URL to event image
-- **maxAttendees**: Integer - Maximum number of attendees
-- **capacity**: Integer - Venue capacity
-- **parkingInfo**: String - Parking instructions
-- **meetingPoint**: String - Where to meet for the event
-- **duration**: String - How long the event lasts
-- **whatToBring**: String - Items attendees should bring
-- **specialNotes**: String - Additional notes (source info will be appended)
-- **requirements**: String - Age limits or other requirements
-- **contactInfo**: String - Contact information
-- **cancellationPolicy**: String - Cancellation terms
+// Get event details
+const getEventDetails = async (eventId) => {
+  return await apiClient.get(`/api/events/${eventId}`);
+};
 
-## Organizer Handling
+// RSVP to event
+const rsvpToEvent = async (eventId, status) => {
+  return await apiClient.post(`/api/events/${eventId}/rsvp`, { status });
+};
 
-The API automatically handles organizer creation:
+// Get event messages
+const getEventMessages = async (eventId) => {
+  return await apiClient.get(`/api/events/${eventId}/messages`);
+};
 
-1. **If organizerEmail is provided:**
-   - Searches for existing user with that email
-   - If found, uses that user as organizer
-   - If not found, creates new user with that email
+// Send message to event
+const sendEventMessage = async (eventId, content, quotedMessageId = null) => {
+  return await apiClient.post(`/api/events/${eventId}/messages`, {
+    content,
+    quotedMessageId
+  });
+};
+```
 
-2. **If organizerEmail is not provided:**
-   - Creates a default external organizer
-   - Uses email format: `external-{timestamp}@eventconnect.app`
+### Event Discovery
+```javascript
+// Browse events with filtering
+const browseEvents = async (category = null, timeframe = null) => {
+  const params = {};
+  if (category) params.category = category;
+  if (timeframe) params.timeframe = timeframe;
+  
+  const query = new URLSearchParams(params);
+  return await apiClient.get(`/api/events/browse?${query}`);
+};
 
-## Rate Limiting & Best Practices
+// Get personalized recommendations
+const getRecommendedEvents = async () => {
+  return await apiClient.get('/api/events/discover');
+};
+```
 
-- No authentication required, but don't abuse the endpoint
-- Include source information to track where events come from
-- Use proper date/time formats to avoid parsing errors
-- Validate data before sending to reduce error responses
-- Handle HTTP errors gracefully in your crawl job
+### Real-time Features
+```javascript
+// WebSocket connection for real-time updates
+const connectWebSocket = () => {
+  const wsUrl = API_BASE_URL.replace('https://', 'wss://');
+  const socket = new WebSocket(wsUrl);
+  
+  socket.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    handleRealtimeUpdate(data);
+  };
+  
+  return socket;
+};
+```
 
-## Testing the API
+### AI Customer Service
+```javascript
+// Chat with AI assistant
+const chatWithAI = async (message, eventId = null, voiceMode = false) => {
+  return await apiClient.post('/api/ai/customer-service', {
+    message,
+    eventId,
+    voiceMode
+  });
+};
+```
 
-You can test the API immediately using any HTTP client. The endpoint is live and ready to receive events from your partner's web crawl job.
+## Error Handling
 
-Replace `https://your-app.replit.app` with your actual Replit app URL when sharing this documentation with your partner.
+```javascript
+// API Error Handler
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Redirect to authentication
+      handleAuthRequired();
+    } else if (error.response?.status >= 500) {
+      // Show server error message
+      showErrorMessage('Server error. Please try again later.');
+    }
+    return Promise.reject(error);
+  }
+);
+```
+
+## Sample Data Available
+
+The backend currently has **57 comprehensive sample events** for August 2025:
+
+- **8 Music Events**: Festivals, concerts, open mic nights
+- **10 Sports Events**: Tournaments, fitness classes, outdoor activities  
+- **8 Arts Events**: Workshops, exhibitions, creative classes
+- **8 Food Events**: Cooking classes, tastings, food festivals
+- **6 Tech Events**: AI workshops, development bootcamps
+- **5 Community Events**: Volunteer opportunities, cultural events
+- **3 Business Events**: Networking, professional development
+- **4 Education Events**: Learning opportunities, skill building
+- **5 Health & Wellness Events**: Fitness, mental health, nutrition
+
+## Location Integration
+
+Events include location data for map integration:
+```javascript
+// Event location data structure
+{
+  "location": "Venue Name, 123 Street Address",
+  "latitude": "40.7589",
+  "longitude": "-73.9851"
+}
+```
+
+## Rate Limiting
+
+Current API limits:
+- 100 requests/minute for authenticated users
+- 20 requests/minute for unauthenticated users
+- 10 requests/minute for AI customer service
+
+## Cross-Origin Requests
+
+The backend supports CORS for external mobile applications. Ensure your mobile app includes credentials in requests for session-based authentication.
+
+## Deployment Recommendation
+
+For production mobile apps, deploy your Replit backend to get a stable `.replit.app` URL rather than using the development URL.
