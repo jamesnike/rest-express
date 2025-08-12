@@ -29,11 +29,19 @@ export function useAuth() {
     }, 1000);
   }
 
+  const logout = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('auth_token');
+      window.location.href = '/';
+    }
+  };
+
   return {
     user,
     isLoading,
     isAuthenticated: !!user,
     error,
     refetch,
+    logout,
   };
 }

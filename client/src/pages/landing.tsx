@@ -78,9 +78,26 @@ export default function Landing() {
       <button 
         onClick={() => {
           if (process.env.NODE_ENV === 'development') {
-            console.log('Get Started button clicked, navigating to /api/login');
+            console.log('Get Started button clicked, creating demo login');
           }
-          window.location.href = '/api/login';
+          // For demo purposes, use a predefined user
+          fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: 'demo@eventconnect.app',
+              firstName: 'Demo',
+              lastName: 'User'
+            })
+          })
+          .then(res => res.json())
+          .then(data => {
+            if (data.token) {
+              localStorage.setItem('auth_token', data.token);
+              window.location.href = '/';
+            }
+          })
+          .catch(err => console.error('Login failed:', err));
         }}
         className="w-full bg-primary text-white rounded-lg p-4 font-medium mb-4 hover:bg-primary/90 transition-colors"
       >

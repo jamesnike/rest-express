@@ -1,5 +1,19 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+// Helper function to get auth token from localStorage
+const getAuthToken = (): string | null => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('auth_token');
+  }
+  return null;
+};
+
+// Helper function to get auth headers
+const getAuthHeaders = (): Record<string, string> => {
+  const token = getAuthToken();
+  return token ? { 'Authorization': `Bearer ${token}` } : {};
+};
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
@@ -15,10 +29,10 @@ export async function apiRequest(
     method: options.method || "GET",
     headers: {
       "Content-Type": "application/json",
+      ...getAuthHeaders(),
       ...options.headers,
     },
     body: options.body,
-    credentials: "include",
     ...options,
   });
 
@@ -27,13 +41,16 @@ export async function apiRequest(
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
+
 export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
     const res = await fetch(queryKey[0] as string, {
-      credentials: "include",
+      headers: {
+        ...getAuthHeaders(),
+      },
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
