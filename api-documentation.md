@@ -8,7 +8,7 @@ https://ba3a646f-8137-44c9-b8da-3a42bf8c9d50-00-12thhwhpja8kw.kirk.replit.dev
 
 **For Production (after deployment):**
 ```
-https://your-app-name.replit.app
+https://local-event-connect.replit.app
 ```
 
 ## Authentication
