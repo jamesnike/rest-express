@@ -1,38 +1,130 @@
 # EventConnect Backend API Documentation
 
 ## Base URL
+**Current Development URL:**
 ```
-http://localhost:5000
+https://ba3a646f-8137-44c9-b8da-3a42bf8c9d50-00-12thhwhpja8kw.kirk.replit.dev
+```
+
+**For Production (after deployment):**
+```
+https://your-app-name.replit.app
 ```
 
 ## Authentication
-The API uses session-based authentication with Replit Auth. Most endpoints require authentication via session cookies.
+The API uses JWT (JSON Web Token) authentication. Include the JWT token in the `Authorization` header for authenticated requests:
+
+```
+Authorization: Bearer <your-jwt-token>
+```
+
+### Getting a JWT Token
+Use the login endpoint to obtain a JWT token that expires in 7 days.
+
+## Quick Start for Mobile Integration
+
+### 1. Login and Get Token
+```bash
+curl -X POST https://ba3a646f-8137-44c9-b8da-3a42bf8c9d50-00-12thhwhpja8kw.kirk.replit.dev/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"external-1752201712140@eventconnect.app","firstName":"External","lastName":"Organizer"}'
+```
+
+**Response:**
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": { "id": "external_1752201712140_wpi8h9e", "email": "external-1752201712140@eventconnect.app" }
+}
+```
+
+### 2. Use Token for Authenticated Requests
+```bash
+curl -H "Authorization: Bearer <your-token>" \
+  https://ba3a646f-8137-44c9-b8da-3a42bf8c9d50-00-12thhwhpja8kw.kirk.replit.dev/api/auth/user
+```
+
+### 3. Real Test Users Available
+- `external-1752201712140@eventconnect.app`
+- `external-1752201712425@eventconnect.app`
+- `external-1752201712725@eventconnect.app`
+- Or create new users by using any email in the login endpoint
 
 ## API Endpoints
 
 ### Authentication Endpoints
 
-#### GET `/api/auth/user`
-Get current authenticated user information.
+#### POST `/api/auth/login`
+Authenticate user and receive JWT token. Creates new users if they don't exist.
+
+**Request:**
+```json
+{
+  "email": "user@example.com",
+  "firstName": "John",
+  "lastName": "Doe",
+  "profileImageUrl": "https://example.com/avatar.jpg" // optional
+}
+```
 
 **Response:**
 ```json
 {
-  "id": "44781796",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": "user_1754848333518_0pkgpd8ls",
+    "email": "user@example.com",
+    "firstName": "John",
+    "lastName": "Doe",
+    "profileImageUrl": "https://example.com/avatar.jpg"
+  }
+}
+```
+
+#### GET `/api/auth/user`
+Get current authenticated user information. Requires JWT token in Authorization header.
+
+**Headers:**
+```
+Authorization: Bearer <jwt-token>
+```
+
+**Response:**
+```json
+{
+  "id": "user_1754848333518_0pkgpd8ls",
   "email": "user@example.com",
-  "name": "User Name",
-  "profilePicture": "https://...",
+  "firstName": "John",
+  "lastName": "Doe",
+  "profileImageUrl": "https://example.com/avatar.jpg",
   "interests": ["Music", "Sports", "Tech"],
   "personalityTraits": ["creative", "outgoing"],
   "personalSignature": "AI-generated personal description"
 }
 ```
 
-#### GET `/api/login`
-Redirects to Replit Auth login flow.
+#### POST `/api/auth/validate`
+Validate JWT token and get user information.
 
-#### GET `/api/logout`
-Logs out the current user and redirects to landing page.
+**Request:**
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**Response:**
+```json
+{
+  "valid": true,
+  "user": {
+    "id": "user_1754848333518_0pkgpd8ls",
+    "email": "user@example.com",
+    "firstName": "John",
+    "lastName": "Doe"
+  }
+}
+```
 
 ### Event Endpoints
 

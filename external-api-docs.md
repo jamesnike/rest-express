@@ -19,42 +19,129 @@ https://your-app-name.replit.app
 // Mobile app config
 const API_BASE_URL = 'https://ba3a646f-8137-44c9-b8da-3a42bf8c9d50-00-12thhwhpja8kw.kirk.replit.dev';
 
-// API Client setup
+// API Client setup with JWT authentication
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  withCredentials: true, // Important for session cookies
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
   }
 });
+
+// Add JWT token to all requests
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('auth_token'); // or AsyncStorage for React Native
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 ```
 
 ### Authentication Flow for Mobile
-Since this uses session-based auth with Replit Auth, mobile apps need to handle the web-based auth flow:
+The API uses JWT authentication. Here's how to implement it:
 
 ```javascript
-// Option 1: WebView Authentication
-const authenticateUser = () => {
-  // Open WebView to: ${API_BASE_URL}/api/login
-  // Handle redirect back to app after auth success
-  // Session cookie will be automatically stored
+// Login and get JWT token
+const login = async (userInfo) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: userInfo.email,
+        firstName: userInfo.firstName,
+        lastName: userInfo.lastName,
+        profileImageUrl: userInfo.profileImageUrl // optional
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (data.token) {
+      // Store JWT token securely
+      localStorage.setItem('auth_token', data.token); // or AsyncStorage
+      return data.user;
+    }
+  } catch (error) {
+    throw new Error('Login failed');
+  }
 };
 
-// Option 2: Check Authentication Status
+// Check Authentication Status
 const checkAuthStatus = async () => {
   try {
     const response = await apiClient.get('/api/auth/user');
     return response.data; // User is authenticated
   } catch (error) {
     if (error.response?.status === 401) {
-      // User needs to authenticate
+      // Token expired or invalid
+      localStorage.removeItem('auth_token');
       return null;
     }
     throw error;
   }
 };
+
+// Logout
+const logout = () => {
+  localStorage.removeItem('auth_token');
+};
 ```
+
+### Sample Real User Credentials for Testing
+Use these existing users from the database:
+
+```javascript
+// Real existing users you can test with:
+const testUsers = [
+  {
+    email: 'external-1752201712140@eventconnect.app',
+    firstName: 'External',
+    lastName: 'Organizer'
+  },
+  {
+    email: 'external-1752201712425@eventconnect.app',
+    firstName: 'External',
+    lastName: 'Organizer'
+  }
+];
+
+// Example login call:
+const loginResult = await login({
+  email: 'external-1752201712140@eventconnect.app',
+  firstName: 'External',
+  lastName: 'Organizer'
+});
+```
+
+### Working cURL Examples for Testing
+```bash
+# Login and get JWT token
+curl -X POST https://ba3a646f-8137-44c9-b8da-3a42bf8c9d50-00-12thhwhpja8kw.kirk.replit.dev/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"external-1752201712140@eventconnect.app","firstName":"External","lastName":"Organizer"}'
+
+# Get user info (replace <token> with actual token from login response)
+curl -H "Authorization: Bearer <token>" \
+  https://ba3a646f-8137-44c9-b8da-3a42bf8c9d50-00-12thhwhpja8kw.kirk.replit.dev/api/auth/user
+
+# Get events
+curl -H "Authorization: Bearer <token>" \
+  https://ba3a646f-8137-44c9-b8da-3a42bf8c9d50-00-12thhwhpja8kw.kirk.replit.dev/api/events
+
+# Get specific event
+curl -H "Authorization: Bearer <token>" \
+  https://ba3a646f-8137-44c9-b8da-3a42bf8c9d50-00-12thhwhpja8kw.kirk.replit.dev/api/events/1
+```
+
+## Important Notes for Mobile Development
+
+1. **Token Storage**: Use secure storage (AsyncStorage for React Native, KeyChain/Keystore for native apps)
+2. **Token Expiry**: JWT tokens expire in 7 days. Implement token refresh logic.
+3. **Network Handling**: The Replit URL may change if the environment restarts. Consider making the base URL configurable.
+4. **Error Handling**: Always handle 401 responses by clearing tokens and redirecting to login.
+5. **CORS**: The API supports CORS, but ensure your mobile app handles authentication headers properly.
 
 ## Key Mobile API Endpoints
 

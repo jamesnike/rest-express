@@ -52,6 +52,22 @@ Comprehensive backend API documentation has been created in `api-documentation.m
 Additional documentation in `external-api-docs.md` covers external access requirements for mobile frontend integration outside of Replit environment, including production deployment considerations and mobile-specific implementation examples.
 
 ## Recent Changes
+### 2025-02-11 - JWT Authentication System Implementation
+- Successfully converted from Replit Auth to JWT authentication for mobile app compatibility:
+  - Implemented JWT login endpoint (`/api/auth/login`) that works with existing and new users
+  - Added JWT token validation endpoint (`/api/auth/validate`)  
+  - Updated frontend to use localStorage for token storage with Bearer token authentication
+  - Modified API client (`queryClient.ts`) to include JWT tokens in all authenticated requests
+  - Added logout functionality to clear tokens properly
+  - Fixed landing page authentication flow to create demo users and store JWT tokens
+- Updated API documentation with real Replit domain URL:
+  - Base URL: `https://ba3a646f-8137-44c9-b8da-3a42bf8c9d50-00-12thhwhpja8kw.kirk.replit.dev`
+  - Complete JWT authentication guide for mobile integration
+  - Real test user credentials from existing database
+  - Working cURL examples and JavaScript integration code
+  - Mobile-specific setup instructions with error handling
+- System now fully supports mobile app development with JWT tokens that expire in 7 days
+
 ### 2025-02-02 - Application Debugging and Sample Events
 - Fixed TypeScript compilation errors in `server/routes.ts`:
   - Added missing `EventWithOrganizer` type import
