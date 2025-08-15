@@ -52,6 +52,7 @@ Comprehensive backend API documentation has been created in `api-documentation.m
 Additional documentation includes:
 - `external-api-docs.md` - External access requirements for mobile frontend integration outside of Replit environment, including production deployment considerations and mobile-specific implementation examples
 - `group-chat-documentation.md` - Comprehensive Group Chat implementation summary including database schema, API endpoints, WebSocket communication, and mobile integration guide
+- `mobile-group-chat-integration.md` - Step-by-step mobile integration guide for connecting to EventConnect Replit server's Group Chat functionality with code examples, error handling, and testing procedures
 
 ## Recent Changes
 ### 2025-02-11 - JWT Authentication System Implementation
