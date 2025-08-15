@@ -49,7 +49,9 @@ Comprehensive backend API documentation has been created in `api-documentation.m
 - Notification system for unread messages
 - External API for programmatic event creation
 
-Additional documentation in `external-api-docs.md` covers external access requirements for mobile frontend integration outside of Replit environment, including production deployment considerations and mobile-specific implementation examples.
+Additional documentation includes:
+- `external-api-docs.md` - External access requirements for mobile frontend integration outside of Replit environment, including production deployment considerations and mobile-specific implementation examples
+- `group-chat-documentation.md` - Comprehensive Group Chat implementation summary including database schema, API endpoints, WebSocket communication, and mobile integration guide
 
 ## Recent Changes
 ### 2025-02-11 - JWT Authentication System Implementation
