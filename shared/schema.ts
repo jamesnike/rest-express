@@ -28,10 +28,12 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// User storage table - mandatory for Replit Auth
+// User storage table - supports both username/password and external auth
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().notNull(),
+  username: varchar("username").unique(),
   email: varchar("email").unique(),
+  password: varchar("password"),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
@@ -185,6 +187,7 @@ export const savedEventRelations = relations(savedEvents, ({ one }) => ({
 // Zod schemas
 export const upsertUserSchema = createInsertSchema(users).pick({
   id: true,
+  username: true,
   email: true,
   firstName: true,
   lastName: true,
@@ -194,6 +197,25 @@ export const upsertUserSchema = createInsertSchema(users).pick({
   interests: true,
   personality: true,
   aiSignature: true,
+});
+
+// Authentication schemas
+export const loginSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  password: z.string().min(6, "Password must be at least 6 characters")
+});
+
+export const registerSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  email: z.string().email("Please enter a valid email").optional()
+});
+
+export const createUserSchema = createInsertSchema(users).omit({
+  createdAt: true,
+  updatedAt: true
 });
 
 export const insertEventSchema = createInsertSchema(events).omit({
@@ -244,6 +266,9 @@ export const insertSavedEventSchema = createInsertSchema(savedEvents).omit({
 
 // Types
 export type UpsertUser = z.infer<typeof upsertUserSchema>;
+export type LoginRequest = z.infer<typeof loginSchema>;
+export type RegisterRequest = z.infer<typeof registerSchema>;
+export type CreateUser = z.infer<typeof createUserSchema>;
 export type User = typeof users.$inferSelect;
 export type Event = typeof events.$inferSelect;
 export type EventWithOrganizer = Event & {

@@ -29,7 +29,7 @@ export function generateToken(userPayload: Omit<JWTPayload, 'iat' | 'exp'>): str
   return jwt.sign(userPayload, JWT_SECRET, { 
     expiresIn: JWT_EXPIRES_IN,
     issuer: 'eventconnect-api'
-  });
+  } as any);
 }
 
 export function verifyToken(token: string): JWTPayload | null {
@@ -43,8 +43,112 @@ export function verifyToken(token: string): JWTPayload | null {
 }
 
 export async function setupJWTAuth(app: Express) {
-  // Simple login endpoint that creates users and returns JWT
+  // Username/password login endpoint
   app.post('/api/auth/login', async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      
+      if (!username || !password) {
+        return res.status(400).json({ message: "Username and password are required" });
+      }
+
+      // Validate user credentials
+      const user = await storage.validatePassword(username, password);
+      if (!user) {
+        return res.status(401).json({ message: "Invalid username or password" });
+      }
+
+      // Generate JWT token
+      const token = generateToken({
+        sub: user.id,
+        email: user.email || '',
+        firstName: user.firstName || undefined,
+        lastName: user.lastName || undefined,
+        profileImageUrl: user.profileImageUrl || undefined,
+      });
+
+      res.json({ 
+        token,
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          profileImageUrl: user.profileImageUrl
+        }
+      });
+    } catch (error) {
+      console.error("Error in login:", error);
+      res.status(500).json({ message: "Login failed" });
+    }
+  });
+
+  // User registration endpoint
+  app.post('/api/auth/register', async (req, res) => {
+    try {
+      const { username, password, firstName, lastName, email } = req.body;
+      
+      if (!username || !password || !firstName || !lastName) {
+        return res.status(400).json({ message: "Username, password, first name, and last name are required" });
+      }
+
+      // Check if username already exists
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.status(409).json({ message: "Username already exists" });
+      }
+
+      // Check if email already exists (if provided)
+      if (email) {
+        const existingEmailUser = await storage.getUserByEmail(email);
+        if (existingEmailUser) {
+          return res.status(409).json({ message: "Email already exists" });
+        }
+      }
+
+      // Create new user
+      const userId = `user_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      const user = await storage.createUser({
+        id: userId,
+        username,
+        password,
+        firstName,
+        lastName,
+        email,
+        animeAvatarSeed: `seed_${userId}`,
+        interests: [],
+        personality: []
+      });
+
+      // Generate JWT token
+      const token = generateToken({
+        sub: user.id,
+        email: user.email || '',
+        firstName: user.firstName || undefined,
+        lastName: user.lastName || undefined,
+        profileImageUrl: user.profileImageUrl || undefined,
+      });
+
+      res.status(201).json({ 
+        token,
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          profileImageUrl: user.profileImageUrl
+        }
+      });
+    } catch (error) {
+      console.error("Error in registration:", error);
+      res.status(500).json({ message: "Registration failed" });
+    }
+  });
+
+  // Legacy simple login endpoint for existing functionality
+  app.post('/api/auth/login-simple', async (req, res) => {
     try {
       const { email, firstName, lastName, profileImageUrl } = req.body;
       

@@ -18,16 +18,24 @@ import {
   type InsertChatMessage,
   type MessageRead,
   type InsertMessageRead,
+  type CreateUser,
+  type LoginRequest,
+  type RegisterRequest,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, ne, sql, desc, asc, gte, lte, between, gt, inArray } from "drizzle-orm";
 
 // Interface for storage operations
 export interface IStorage {
-  // User operations - mandatory for Replit Auth
+  // User operations - supports both username/password and external auth
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByUsername(username: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  
+  // Authentication operations
+  createUser(user: CreateUser): Promise<User>;
+  validatePassword(username: string, password: string): Promise<User | null>;
   
   // Event operations
   getEvents(userId?: string, category?: string, timeFilter?: string, limit?: number, excludePastEvents?: boolean, timezoneOffset?: number): Promise<EventWithOrganizer[]>;
@@ -94,6 +102,11 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
+  }
+
   async upsertUser(userData: UpsertUser): Promise<User> {
     const [user] = await db
       .insert(users)
@@ -110,6 +123,36 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return user;
+  }
+
+  // Authentication operations
+  async createUser(userData: CreateUser): Promise<User> {
+    const bcrypt = await import('bcryptjs');
+    const hashedPassword = await bcrypt.hash(userData.password!, 10);
+    
+    const userId = `user_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    
+    const [user] = await db
+      .insert(users)
+      .values({
+        ...userData,
+        id: userId,
+        password: hashedPassword,
+        animeAvatarSeed: userData.animeAvatarSeed || `seed_${userId}`,
+        interests: userData.interests || [],
+        personality: userData.personality || [],
+      })
+      .returning();
+    return user;
+  }
+
+  async validatePassword(username: string, password: string): Promise<User | null> {
+    const user = await this.getUserByUsername(username);
+    if (!user || !user.password) return null;
+    
+    const bcrypt = await import('bcryptjs');
+    const isValid = await bcrypt.compare(password, user.password);
+    return isValid ? user : null;
   }
 
   // Helper function to parse time filter and get date/time conditions
