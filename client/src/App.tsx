@@ -6,7 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
-import Landing from "@/pages/landing";
+import Landing from "@/pages/simple-landing";
 import Home from "@/pages/home";
 import Profile from "@/pages/profile";
 import MyEvents from "@/pages/my-events";
