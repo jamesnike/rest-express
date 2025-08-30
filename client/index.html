@@ -1,24 +1,58 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>EventConnect Test</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#3b82f6" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <link rel="manifest" href="/manifest.json" />
+    <title>EventConnect - Mobile Event Discovery</title>
 </head>
-<body style="margin: 0; font-family: Arial;">
-    <div style="width: 100%; height: 100vh; background: #3b82f6; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-        <h1>EventConnect Working!</h1>
-        <p>JWT Login System Ready</p>
-        <button onclick="doLogin()" style="background: white; color: #3b82f6; border: none; padding: 15px 30px; font-size: 18px; border-radius: 8px; cursor: pointer; margin-top: 20px;">Create Demo Account</button>
+<body style="margin: 0; font-family: Arial, sans-serif;">
+    <div id="root">
+        <div style="width: 100%; height: 100vh; background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box;">
+            <div style="text-align: center; max-width: 350px; width: 100%;">
+                <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem; font-weight: bold;">EventConnect</h1>
+                <p style="margin-bottom: 2rem; opacity: 0.9; font-size: 1.1rem;">Discover local events, connect with your community</p>
+                
+                <div style="background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border-radius: 16px; padding: 30px; margin-bottom: 20px;">
+                    <h2 style="margin-bottom: 20px; font-size: 1.2rem;">Get Started</h2>
+                    
+                    <button 
+                        onclick="createDemoAccount()" 
+                        style="width: 100%; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; padding: 15px 20px; font-size: 16px; border-radius: 12px; cursor: pointer; margin-bottom: 15px; font-weight: 600; transition: transform 0.2s;"
+                        onmouseover="this.style.transform='scale(1.02)'"
+                        onmouseout="this.style.transform='scale(1)'"
+                    >
+                        🚀 Create Demo Account
+                    </button>
+                    
+                    <div style="text-align: center; margin: 15px 0; color: rgba(255,255,255,0.7);">or</div>
+                    
+                    <button 
+                        onclick="showLoginForm()" 
+                        style="width: 100%; background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 15px 20px; font-size: 16px; border-radius: 12px; cursor: pointer; font-weight: 600; transition: all 0.2s;"
+                        onmouseover="this.style.background='rgba(255,255,255,0.3)'"
+                        onmouseout="this.style.background='rgba(255,255,255,0.2)'"
+                    >
+                        🔑 Login with Username
+                    </button>
+                </div>
+                
+                <p style="font-size: 0.9rem; opacity: 0.7; text-align: center;">Your JWT token will be saved automatically</p>
+            </div>
+        </div>
     </div>
     
     <script>
-        console.log('JavaScript is loading');
+        console.log('EventConnect PWA loaded');
         
-        async function doLogin() {
-            console.log('Button clicked');
+        async function createDemoAccount() {
             try {
-                const username = 'demo' + Math.random().toString(36).substr(2, 5);
-                console.log('Creating user:', username);
+                const username = 'demo' + Math.random().toString(36).substr(2, 6);
+                console.log('Creating demo account:', username);
                 
                 const response = await fetch('/api/auth/register', {
                     method: 'POST',
@@ -32,19 +66,130 @@
                 });
                 
                 const data = await response.json();
-                console.log('Response:', data);
+                console.log('Registration response:', data);
                 
                 if (data.token) {
                     localStorage.setItem('auth_token', data.token);
-                    document.body.innerHTML = '<div style="width: 100%; height: 100vh; background: linear-gradient(135deg, #10b981, #3b82f6); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: Arial, sans-serif;"><h1>✅ Login Success!</h1><p>Username: ' + data.user.username + '</p><p>JWT Token Saved!</p><button onclick="location.reload()" style="background: white; color: #10b981; border: none; padding: 15px 30px; font-size: 18px; border-radius: 8px; cursor: pointer; margin-top: 20px;">Continue to App</button></div>';
+                    showSuccess(data.user.username);
                 } else {
-                    alert('Failed: ' + JSON.stringify(data));
+                    alert('Registration failed: ' + JSON.stringify(data));
                 }
             } catch (error) {
-                alert('Error: ' + error.message);
-                console.error('Login error:', error);
+                console.error('Registration error:', error);
+                alert('Network error: ' + error.message);
             }
         }
+        
+        function showLoginForm() {
+            document.getElementById('root').innerHTML = `
+                <div style="width: 100%; height: 100vh; background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box;">
+                    <div style="text-align: center; max-width: 350px; width: 100%;">
+                        <h1 style="font-size: 2rem; margin-bottom: 2rem;">Login to EventConnect</h1>
+                        
+                        <div style="background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border-radius: 16px; padding: 30px;">
+                            <input 
+                                type="text" 
+                                id="username" 
+                                placeholder="Username" 
+                                style="width: 100%; padding: 15px; margin-bottom: 15px; border: none; border-radius: 8px; font-size: 16px; background: rgba(255,255,255,0.9); color: #333; box-sizing: border-box;"
+                            />
+                            <input 
+                                type="password" 
+                                id="password" 
+                                placeholder="Password" 
+                                style="width: 100%; padding: 15px; margin-bottom: 20px; border: none; border-radius: 8px; font-size: 16px; background: rgba(255,255,255,0.9); color: #333; box-sizing: border-box;"
+                            />
+                            <button 
+                                onclick="doLogin()" 
+                                style="width: 100%; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; padding: 15px; font-size: 16px; border-radius: 8px; cursor: pointer; font-weight: 600; margin-bottom: 15px;"
+                            >
+                                🔑 Login
+                            </button>
+                            <button 
+                                onclick="location.reload()" 
+                                style="width: 100%; background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 15px; font-size: 16px; border-radius: 8px; cursor: pointer;"
+                            >
+                                ← Back
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        async function doLogin() {
+            try {
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                
+                if (!username || !password) {
+                    alert('Please enter username and password');
+                    return;
+                }
+                
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.token) {
+                    localStorage.setItem('auth_token', data.token);
+                    showSuccess(data.user.username);
+                } else {
+                    alert('Login failed: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                alert('Network error: ' + error.message);
+            }
+        }
+        
+        function showSuccess(username) {
+            document.getElementById('root').innerHTML = `
+                <div style="width: 100%; height: 100vh; background: linear-gradient(135deg, #10b981, #3b82f6); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box;">
+                    <div style="text-align: center; max-width: 350px; width: 100%;">
+                        <div style="font-size: 4rem; margin-bottom: 20px;">✅</div>
+                        <h1 style="font-size: 2rem; margin-bottom: 10px;">Login Successful!</h1>
+                        <p style="font-size: 1.2rem; margin-bottom: 10px; opacity: 0.9;">Welcome, ${username}!</p>
+                        <p style="margin-bottom: 30px; opacity: 0.8;">JWT Token saved to localStorage</p>
+                        
+                        <div style="background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+                            <p style="margin: 0; font-size: 0.9rem; opacity: 0.9;">✨ Your login will persist when you refresh or reopen the app</p>
+                        </div>
+                        
+                        <button 
+                            onclick="location.reload()" 
+                            style="width: 100%; background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 15px; font-size: 16px; border-radius: 12px; cursor: pointer; font-weight: 600;"
+                        >
+                            🔄 Reload App to Test Persistence
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Check if user is already logged in
+        window.addEventListener('load', () => {
+            const token = localStorage.getItem('auth_token');
+            if (token) {
+                fetch('/api/auth/validate', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.user) {
+                        showSuccess(data.user.username + ' (returning user)');
+                    }
+                })
+                .catch(() => {
+                    // Token invalid, show login page
+                    localStorage.removeItem('auth_token');
+                });
+            }
+        });
     </script>
 </body>
 </html>
