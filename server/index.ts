@@ -1,70 +1,165 @@
-import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
+import express from "express";
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
+import { db } from "./db";
+import { users } from "@shared/schema";
+import { eq } from "drizzle-orm";
+import path from "path";
 
 const app = express();
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: false, limit: '10mb' }));
+app.use(express.json());
 
-app.use((req, res, next) => {
-  const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
+// Serve static client files
+app.use(express.static(path.resolve(import.meta.dirname, "..", "client")));
 
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
+// JWT Secret
+const JWT_SECRET = process.env.JWT_SECRET || 'eventconnect-simple-secret';
 
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
-      log(logLine);
+// Register endpoint
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    console.log('Registration request:', req.body);
+    const { username, password, firstName, lastName } = req.body;
+    
+    if (!username || !password) {
+      return res.status(400).json({ message: "Username and password required" });
     }
-  });
-
-  next();
+    
+    // Check if user exists
+    const existingUser = await db.select().from(users).where(eq(users.username, username)).limit(1);
+    if (existingUser.length > 0) {
+      return res.status(400).json({ message: "Username already exists" });
+    }
+    
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    // Create user
+    const [user] = await db.insert(users).values({
+      id: 'user_' + Math.random().toString(36).substr(2, 9),
+      username,
+      password: hashedPassword,
+      firstName: firstName || 'Demo',
+      lastName: lastName || 'User',
+      email: username + '@demo.com'
+    }).returning();
+    
+    // Generate JWT
+    const token = jwt.sign(
+      { 
+        sub: user.id, 
+        username: user.username,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName
+      }, 
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    
+    console.log('✅ User registered:', user.username);
+    res.json({ 
+      token, 
+      user: { 
+        id: user.id, 
+        username: user.username,
+        firstName: user.firstName,
+        lastName: user.lastName
+      } 
+    });
+  } catch (error) {
+    console.error('❌ Registration error:', error);
+    res.status(500).json({ message: 'Registration failed: ' + error.message });
+  }
 });
 
-(async () => {
-  const server = await registerRoutes(app);
-
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
-    res.status(status).json({ message });
-    throw err;
-  });
-
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
+// Login endpoint
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    console.log('Login request:', req.body);
+    const { username, password } = req.body;
+    
+    if (!username || !password) {
+      return res.status(400).json({ message: "Username and password required" });
+    }
+    
+    const [user] = await db.select().from(users).where(eq(users.username, username)).limit(1);
+    
+    if (!user || !user.password) {
+      return res.status(401).json({ message: 'Invalid username or password' });
+    }
+    
+    const validPassword = await bcrypt.compare(password, user.password);
+    if (!validPassword) {
+      return res.status(401).json({ message: 'Invalid username or password' });
+    }
+    
+    const token = jwt.sign(
+      { 
+        sub: user.id, 
+        username: user.username,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName
+      }, 
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    
+    console.log('✅ User logged in:', user.username);
+    res.json({ 
+      token, 
+      user: { 
+        id: user.id, 
+        username: user.username,
+        firstName: user.firstName,
+        lastName: user.lastName
+      } 
+    });
+  } catch (error) {
+    console.error('❌ Login error:', error);
+    res.status(500).json({ message: 'Login failed: ' + error.message });
   }
+});
 
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = 5000;
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
-  });
-})();
+// Token validation endpoint
+app.get('/api/auth/validate', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    
+    if (!token) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+    
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const [user] = await db.select().from(users).where(eq(users.id, decoded.sub)).limit(1);
+    
+    if (!user) {
+      return res.status(401).json({ message: 'User not found' });
+    }
+    
+    res.json({ 
+      user: { 
+        id: user.id, 
+        username: user.username,
+        firstName: user.firstName,
+        lastName: user.lastName
+      } 
+    });
+  } catch (error) {
+    console.error('❌ Token validation error:', error);
+    res.status(401).json({ message: 'Invalid token' });
+  }
+});
+
+// Serve index.html for all non-API routes
+app.get('*', (req, res) => {
+  res.sendFile(path.resolve(import.meta.dirname, "..", "client", "index.html"));
+});
+
+const port = 5000;
+app.listen(port, '0.0.0.0', () => {
+  console.log(`🚀 EventConnect server running on port ${port}`);
+  console.log(`📱 Access your PWA at: https://local-event-connect.replit.app`);
+});
