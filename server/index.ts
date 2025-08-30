@@ -18,9 +18,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Serve static client files
-app.use(express.static(path.resolve(import.meta.dirname, "..", "client")));
-
 // JWT Secret
 const JWT_SECRET = process.env.JWT_SECRET || 'eventconnect-simple-secret';
 
@@ -819,10 +816,13 @@ app.get('/', (req, res) => {
   `);
 });
 
-// Serve index.html for all other routes
-app.get('*', (req, res) => {
-  res.sendFile(path.resolve(import.meta.dirname, "..", "client", "index.html"));
-});
+// Temporarily disable static files to test login
+// app.use(express.static(path.resolve(import.meta.dirname, "..", "client")));
+
+// Catch-all for testing (temporarily disabled)
+// app.get('*', (req, res) => {
+//   res.sendFile(path.resolve(import.meta.dirname, "..", "client", "index.html"));
+// });
 
 const port = 5000;
 app.listen(port, '0.0.0.0', () => {
