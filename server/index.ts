@@ -162,6 +162,113 @@ app.get('/api/auth/validate', async (req, res) => {
   }
 });
 
+// Test login page without Vite interference
+app.get('/login-test', (req, res) => {
+  res.send(`
+<!DOCTYPE html>
+<html>
+<head>
+    <title>EventConnect Login Test</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;font-family:Arial;background:#000;">
+    <div style="width:100%;height:100vh;background:linear-gradient(45deg,#e74c3c,#f39c12);color:white;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;">
+        <h1 style="font-size:2.5rem;margin-bottom:1rem;">🔥 Login Test Page</h1>
+        <p style="font-size:1.2rem;margin-bottom:2rem;">Testing JWT Without Cache Issues</p>
+        
+        <div style="background:rgba(0,0,0,0.3);border-radius:15px;padding:25px;max-width:350px;width:100%;">
+            <button onclick="doRegister()" style="width:100%;background:#27ae60;color:white;border:none;padding:15px;font-size:16px;border-radius:8px;cursor:pointer;margin-bottom:15px;font-weight:600;">
+                🚀 Create Test User
+            </button>
+            
+            <div style="margin:15px 0;text-align:center;opacity:0.7;">Username & Password Login:</div>
+            
+            <input type="text" id="username" placeholder="Username" style="width:100%;padding:12px;margin-bottom:10px;border:none;border-radius:6px;font-size:16px;box-sizing:border-box;">
+            <input type="password" id="password" placeholder="Password" style="width:100%;padding:12px;margin-bottom:15px;border:none;border-radius:6px;font-size:16px;box-sizing:border-box;">
+            
+            <button onclick="doLogin()" style="width:100%;background:#3498db;color:white;border:none;padding:15px;font-size:16px;border-radius:8px;cursor:pointer;font-weight:600;">
+                🔑 Login
+            </button>
+            
+            <div id="result" style="margin-top:15px;padding:10px;background:rgba(255,255,255,0.1);border-radius:8px;display:none;"></div>
+        </div>
+    </div>
+    
+    <script>
+        console.log('Login test page loaded');
+        
+        async function doRegister() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '⏳ Creating account...';
+            
+            try {
+                const username = 'user' + Date.now().toString().slice(-6);
+                
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username,
+                        password: 'test123',
+                        firstName: 'Test',
+                        lastName: 'User'
+                    })
+                });
+                
+                const data = await response.json();
+                console.log('Register response:', data);
+                
+                if (data.token) {
+                    resultDiv.innerHTML = '<div style="color:#2ecc71;font-weight:600;">✅ Account Created!</div><div>Username: ' + data.user.username + '</div><div style="font-size:0.9rem;margin-top:5px;">Token: ' + data.token.substring(0, 30) + '...</div>';
+                } else {
+                    resultDiv.innerHTML = '❌ Failed: ' + JSON.stringify(data);
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '❌ Error: ' + error.message;
+            }
+        }
+        
+        async function doLogin() {
+            const resultDiv = document.getElementById('result');
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            if (!username || !password) {
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = '⚠️ Please enter username and password';
+                return;
+            }
+            
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '⏳ Logging in...';
+            
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                console.log('Login response:', data);
+                
+                if (data.token) {
+                    resultDiv.innerHTML = '<div style="color:#2ecc71;font-weight:600;">✅ Login Success!</div><div>Welcome: ' + data.user.username + '</div><div style="font-size:0.9rem;margin-top:5px;">Token: ' + data.token.substring(0, 30) + '...</div>';
+                } else {
+                    resultDiv.innerHTML = '❌ Login failed: ' + data.message;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '❌ Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>
+  `);
+});
+
 // Serve index.html for all non-API routes
 app.get('*', (req, res) => {
   res.sendFile(path.resolve(import.meta.dirname, "..", "client", "index.html"));
