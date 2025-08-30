@@ -1,111 +1,14 @@
 <!DOCTYPE html>
-<html>
-<head>
-    <title>EventConnect Login - No Cache</title>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
-</head>
-<body style="margin:0;font-family:Arial;background:#2c3e50;">
-    <div style="width:100%;height:100vh;background:linear-gradient(45deg,#e74c3c,#f39c12);color:white;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
-        <div style="text-align:center;max-width:400px;width:100%;">
-            <h1 style="font-size:2.5rem;margin-bottom:1rem;text-shadow:2px 2px 4px rgba(0,0,0,0.5);">🔥 EventConnect</h1>
-            <p style="font-size:1.1rem;margin-bottom:2rem;opacity:0.9;">No Cache Test - JWT Login System</p>
-            
-            <div style="background:rgba(0,0,0,0.3);border-radius:15px;padding:25px;margin-bottom:20px;">
-                <h3 style="margin-bottom:20px;font-size:1.2rem;">Quick Demo Login</h3>
-                
-                <button onclick="testRegistration()" style="width:100%;background:#27ae60;color:white;border:none;padding:15px;font-size:16px;border-radius:8px;cursor:pointer;font-weight:600;margin-bottom:15px;">
-                    ✨ Register New User
-                </button>
-                
-                <div style="margin:15px 0;opacity:0.7;">--- or test existing ---</div>
-                
-                <button onclick="testLogin()" style="width:100%;background:#3498db;color:white;border:none;padding:15px;font-size:16px;border-radius:8px;cursor:pointer;font-weight:600;">
-                    🔑 Test Login (demo123/demo123)
-                </button>
-            </div>
-            
-            <div id="result" style="margin-top:20px;padding:15px;background:rgba(0,0,0,0.2);border-radius:10px;min-height:60px;display:none;"></div>
-        </div>
-    </div>
-    
-    <script>
-        console.log('🔥 EventConnect No-Cache Version Loaded');
-        
-        async function testRegistration() {
-            const resultDiv = document.getElementById('result');
-            resultDiv.style.display = 'block';
-            resultDiv.innerHTML = '⏳ Creating new user...';
-            
-            try {
-                const username = 'test' + Date.now().toString().slice(-6);
-                
-                const response = await fetch('/api/auth/register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        username: username,
-                        password: 'demo123',
-                        firstName: 'Test',
-                        lastName: 'User'
-                    })
-                });
-                
-                const data = await response.json();
-                console.log('Registration result:', data);
-                
-                if (data.token) {
-                    resultDiv.innerHTML = \`
-                        <div style="color:#2ecc71;font-weight:600;margin-bottom:10px;">✅ SUCCESS!</div>
-                        <div>Username: \${data.user.username}</div>
-                        <div style="font-size:0.9rem;opacity:0.8;margin-top:5px;">JWT Token: \${data.token.substring(0,20)}...</div>
-                        <div style="font-size:0.9rem;margin-top:10px;color:#f39c12;">🎯 Registration working perfectly!</div>
-                    \`;
-                } else {
-                    resultDiv.innerHTML = '❌ Registration failed: ' + JSON.stringify(data);
-                }
-            } catch (error) {
-                console.error('Registration error:', error);
-                resultDiv.innerHTML = '❌ Network error: ' + error.message;
-            }
-        }
-        
-        async function testLogin() {
-            const resultDiv = document.getElementById('result');
-            resultDiv.style.display = 'block';
-            resultDiv.innerHTML = '⏳ Testing login...';
-            
-            try {
-                const response = await fetch('/api/auth/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        username: 'demo123',
-                        password: 'demo123'
-                    })
-                });
-                
-                const data = await response.json();
-                console.log('Login result:', data);
-                
-                if (data.token) {
-                    resultDiv.innerHTML = \`
-                        <div style="color:#2ecc71;font-weight:600;margin-bottom:10px;">✅ LOGIN SUCCESS!</div>
-                        <div>Welcome back: \${data.user.username}</div>
-                        <div style="font-size:0.9rem;opacity:0.8;margin-top:5px;">JWT Token: \${data.token.substring(0,20)}...</div>
-                        <div style="font-size:0.9rem;margin-top:10px;color:#f39c12;">🎯 Login system working!</div>
-                    \`;
-                } else {
-                    resultDiv.innerHTML = '❌ Login failed: ' + data.message + '<br><small>Try "Register New User" first</small>';
-                }
-            } catch (error) {
-                console.error('Login error:', error);
-                resultDiv.innerHTML = '❌ Network error: ' + error.message;
-            }
-        }
-    </script>
-</body>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EventConnect - Mobile Event Discovery</title>
+    <meta name="description" content="Discover and connect with local events in your community" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>
