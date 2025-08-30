@@ -9,6 +9,15 @@ import path from "path";
 const app = express();
 app.use(express.json());
 
+// Disable all caching
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  res.set('Surrogate-Control', 'no-store');
+  next();
+});
+
 // Serve static client files
 app.use(express.static(path.resolve(import.meta.dirname, "..", "client")));
 

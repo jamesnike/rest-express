@@ -1,103 +1,111 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>EventConnect LIVE JWT System</title>
+    <title>EventConnect Login - No Cache</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
 </head>
-<body style="margin:0;font-family:Arial;">
+<body style="margin:0;font-family:Arial;background:#2c3e50;">
     <div style="width:100%;height:100vh;background:linear-gradient(45deg,#e74c3c,#f39c12);color:white;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
-        <h1 style="font-size:3rem;margin-bottom:1rem;text-shadow:2px 2px 4px rgba(0,0,0,0.5);">🔥 EventConnect LIVE</h1>
-        <p style="font-size:1.2rem;margin-bottom:2rem;font-weight:600;">JWT Authentication System Working!</p>
-        
-        <div style="background:rgba(0,0,0,0.3);border-radius:20px;padding:30px;max-width:350px;width:100%;text-align:center;">
-            <button onclick="createAccount()" style="width:100%;background:linear-gradient(135deg,#27ae60,#2ecc71);color:white;border:none;padding:20px;font-size:18px;border-radius:12px;cursor:pointer;font-weight:700;margin-bottom:15px;box-shadow:0 4px 15px rgba(0,0,0,0.2);">🚀 CREATE DEMO USER</button>
-            <button onclick="showLogin()" style="width:100%;background:rgba(255,255,255,0.2);color:white;border:2px solid rgba(255,255,255,0.5);padding:18px;font-size:16px;border-radius:12px;cursor:pointer;font-weight:600;">🔑 Custom Login</button>
+        <div style="text-align:center;max-width:400px;width:100%;">
+            <h1 style="font-size:2.5rem;margin-bottom:1rem;text-shadow:2px 2px 4px rgba(0,0,0,0.5);">🔥 EventConnect</h1>
+            <p style="font-size:1.1rem;margin-bottom:2rem;opacity:0.9;">No Cache Test - JWT Login System</p>
+            
+            <div style="background:rgba(0,0,0,0.3);border-radius:15px;padding:25px;margin-bottom:20px;">
+                <h3 style="margin-bottom:20px;font-size:1.2rem;">Quick Demo Login</h3>
+                
+                <button onclick="testRegistration()" style="width:100%;background:#27ae60;color:white;border:none;padding:15px;font-size:16px;border-radius:8px;cursor:pointer;font-weight:600;margin-bottom:15px;">
+                    ✨ Register New User
+                </button>
+                
+                <div style="margin:15px 0;opacity:0.7;">--- or test existing ---</div>
+                
+                <button onclick="testLogin()" style="width:100%;background:#3498db;color:white;border:none;padding:15px;font-size:16px;border-radius:8px;cursor:pointer;font-weight:600;">
+                    🔑 Test Login (demo123/demo123)
+                </button>
+            </div>
+            
+            <div id="result" style="margin-top:20px;padding:15px;background:rgba(0,0,0,0.2);border-radius:10px;min-height:60px;display:none;"></div>
         </div>
-        
-        <p style="margin-top:20px;font-size:0.9rem;opacity:0.8;text-align:center;">✨ JWT tokens persist for 7 days</p>
     </div>
     
     <script>
-        console.log('🔥 EventConnect LIVE system loaded!');
+        console.log('🔥 EventConnect No-Cache Version Loaded');
         
-        async function createAccount() {
-            console.log('Creating account...');
+        async function testRegistration() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '⏳ Creating new user...';
+            
             try {
-                const username = 'user' + Date.now().toString().slice(-6);
+                const username = 'test' + Date.now().toString().slice(-6);
                 
                 const response = await fetch('/api/auth/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        username,
+                        username: username,
                         password: 'demo123',
-                        firstName: 'Demo',
+                        firstName: 'Test',
                         lastName: 'User'
                     })
                 });
                 
                 const data = await response.json();
-                console.log('Account created:', data);
+                console.log('Registration result:', data);
                 
                 if (data.token) {
-                    localStorage.setItem('auth_token', data.token);
-                    showSuccess(data.user.username);
+                    resultDiv.innerHTML = \`
+                        <div style="color:#2ecc71;font-weight:600;margin-bottom:10px;">✅ SUCCESS!</div>
+                        <div>Username: \${data.user.username}</div>
+                        <div style="font-size:0.9rem;opacity:0.8;margin-top:5px;">JWT Token: \${data.token.substring(0,20)}...</div>
+                        <div style="font-size:0.9rem;margin-top:10px;color:#f39c12;">🎯 Registration working perfectly!</div>
+                    \`;
                 } else {
-                    alert('Failed: ' + JSON.stringify(data));
+                    resultDiv.innerHTML = '❌ Registration failed: ' + JSON.stringify(data);
                 }
             } catch (error) {
-                alert('Error: ' + error.message);
+                console.error('Registration error:', error);
+                resultDiv.innerHTML = '❌ Network error: ' + error.message;
             }
         }
         
-        function showLogin() {
-            document.body.innerHTML = '<div style="width:100%;height:100vh;background:linear-gradient(45deg,#9b59b6,#3498db);color:white;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;"><div style="max-width:350px;width:100%;text-align:center;"><h1 style="font-size:2.5rem;margin-bottom:2rem;">Login</h1><div style="background:rgba(0,0,0,0.3);border-radius:20px;padding:30px;"><input type="text" id="user" placeholder="Username" style="width:100%;padding:15px;margin-bottom:15px;border:none;border-radius:8px;font-size:16px;box-sizing:border-box;"><input type="password" id="pass" placeholder="Password" style="width:100%;padding:15px;margin-bottom:20px;border:none;border-radius:8px;font-size:16px;box-sizing:border-box;"><button onclick="doLogin()" style="width:100%;background:#27ae60;color:white;border:none;padding:15px;font-size:16px;border-radius:8px;cursor:pointer;font-weight:600;margin-bottom:10px;">LOGIN</button><button onclick="location.reload()" style="width:100%;background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3);padding:15px;font-size:16px;border-radius:8px;cursor:pointer;">Back</button></div></div></div>';
-        }
-        
-        async function doLogin() {
-            const username = document.getElementById('user').value;
-            const password = document.getElementById('pass').value;
+        async function testLogin() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '⏳ Testing login...';
             
             try {
                 const response = await fetch('/api/auth/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
+                    body: JSON.stringify({
+                        username: 'demo123',
+                        password: 'demo123'
+                    })
                 });
                 
                 const data = await response.json();
+                console.log('Login result:', data);
+                
                 if (data.token) {
-                    localStorage.setItem('auth_token', data.token);
-                    showSuccess(data.user.username);
+                    resultDiv.innerHTML = \`
+                        <div style="color:#2ecc71;font-weight:600;margin-bottom:10px;">✅ LOGIN SUCCESS!</div>
+                        <div>Welcome back: \${data.user.username}</div>
+                        <div style="font-size:0.9rem;opacity:0.8;margin-top:5px;">JWT Token: \${data.token.substring(0,20)}...</div>
+                        <div style="font-size:0.9rem;margin-top:10px;color:#f39c12;">🎯 Login system working!</div>
+                    \`;
                 } else {
-                    alert('Login failed: ' + data.message);
+                    resultDiv.innerHTML = '❌ Login failed: ' + data.message + '<br><small>Try "Register New User" first</small>';
                 }
             } catch (error) {
-                alert('Error: ' + error.message);
+                console.error('Login error:', error);
+                resultDiv.innerHTML = '❌ Network error: ' + error.message;
             }
         }
-        
-        function showSuccess(username) {
-            document.body.innerHTML = '<div style="width:100%;height:100vh;background:linear-gradient(45deg,#27ae60,#2ecc71);color:white;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;"><div style="text-align:center;max-width:350px;width:100%;"><div style="font-size:4rem;margin-bottom:20px;">✅</div><h1 style="font-size:2rem;margin-bottom:15px;">SUCCESS!</h1><p style="font-size:1.3rem;margin-bottom:15px;">Welcome ' + username + '!</p><div style="background:rgba(0,0,0,0.2);border-radius:15px;padding:20px;margin-bottom:20px;"><p style="margin:5px 0;font-weight:600;">🔐 JWT Token Saved</p><p style="margin:5px 0;">✨ Login persists for 7 days</p></div><button onclick="location.reload()" style="width:100%;background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.5);padding:15px;font-size:16px;border-radius:8px;cursor:pointer;font-weight:600;">🔄 Test Persistence</button></div></div>';
-        }
-        
-        // Check for existing login on page load
-        window.addEventListener('load', () => {
-            const token = localStorage.getItem('auth_token');
-            if (token) {
-                fetch('/api/auth/validate', {
-                    headers: { 'Authorization': 'Bearer ' + token }
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.user) {
-                        showSuccess(data.user.username + ' (auto-login)');
-                    }
-                })
-                .catch(() => localStorage.removeItem('auth_token'));
-            }
-        });
     </script>
 </body>
 </html>
