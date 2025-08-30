@@ -178,7 +178,7 @@ app.get('/auth-demo-12345', (req, res) => {
         <p style="font-size:1.2rem;margin-bottom:2rem;">Testing JWT Without Cache Issues</p>
         
         <div style="background:rgba(0,0,0,0.3);border-radius:15px;padding:25px;max-width:350px;width:100%;">
-            <button onclick="doRegister()" style="width:100%;background:#27ae60;color:white;border:none;padding:15px;font-size:16px;border-radius:8px;cursor:pointer;margin-bottom:15px;font-weight:600;">
+            <button onclick="testRegister()" style="width:100%;background:#27ae60;color:white;border:none;padding:15px;font-size:16px;border-radius:8px;cursor:pointer;margin-bottom:15px;font-weight:600;">
                 🚀 Create Test User
             </button>
             
@@ -187,7 +187,7 @@ app.get('/auth-demo-12345', (req, res) => {
             <input type="text" id="username" placeholder="Username" style="width:100%;padding:12px;margin-bottom:10px;border:none;border-radius:6px;font-size:16px;box-sizing:border-box;">
             <input type="password" id="password" placeholder="Password" style="width:100%;padding:12px;margin-bottom:15px;border:none;border-radius:6px;font-size:16px;box-sizing:border-box;">
             
-            <button onclick="doLogin()" style="width:100%;background:#3498db;color:white;border:none;padding:15px;font-size:16px;border-radius:8px;cursor:pointer;font-weight:600;">
+            <button onclick="testLogin()" style="width:100%;background:#3498db;color:white;border:none;padding:15px;font-size:16px;border-radius:8px;cursor:pointer;font-weight:600;">
                 🔑 Login
             </button>
             
@@ -198,7 +198,7 @@ app.get('/auth-demo-12345', (req, res) => {
     <script>
         console.log('Login test page loaded');
         
-        async function doRegister() {
+        async function testRegister() {
             const resultDiv = document.getElementById('result');
             resultDiv.style.display = 'block';
             resultDiv.innerHTML = '⏳ Creating account...';
@@ -230,7 +230,7 @@ app.get('/auth-demo-12345', (req, res) => {
             }
         }
         
-        async function doLogin() {
+        async function testLogin() {
             const resultDiv = document.getElementById('result');
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
