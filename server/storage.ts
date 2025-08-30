@@ -27,14 +27,16 @@ import { eq, and, or, ne, sql, desc, asc, gte, lte, between, gt, inArray } from 
 
 // Interface for storage operations
 export interface IStorage {
-  // User operations - supports both username/password and external auth
+  // User operations - supports both username/password and OAuth auth
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByOAuth(oauthProvider: string, oauthId: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   
   // Authentication operations
   createUser(user: CreateUser): Promise<User>;
+  createOAuthUser(oauthData: { oauthProvider: string; oauthId: string; email: string; firstName: string; lastName: string; profileImageUrl?: string }): Promise<User>;
   validatePassword(username: string, password: string): Promise<User | null>;
   
   // Event operations
@@ -107,6 +109,16 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async getUserByOAuth(oauthProvider: string, oauthId: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(
+      and(
+        eq(users.oauthProvider, oauthProvider),
+        eq(users.oauthId, oauthId)
+      )
+    );
+    return user;
+  }
+
   async upsertUser(userData: UpsertUser): Promise<User> {
     const [user] = await db
       .insert(users)
@@ -141,6 +153,27 @@ export class DatabaseStorage implements IStorage {
         animeAvatarSeed: userData.animeAvatarSeed || `seed_${userId}`,
         interests: userData.interests || [],
         personality: userData.personality || [],
+      })
+      .returning();
+    return user;
+  }
+
+  async createOAuthUser(oauthData: { oauthProvider: string; oauthId: string; email: string; firstName: string; lastName: string; profileImageUrl?: string }): Promise<User> {
+    const userId = `oauth_${oauthData.oauthProvider}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    
+    const [user] = await db
+      .insert(users)
+      .values({
+        id: userId,
+        email: oauthData.email,
+        oauthProvider: oauthData.oauthProvider,
+        oauthId: oauthData.oauthId,
+        firstName: oauthData.firstName,
+        lastName: oauthData.lastName,
+        profileImageUrl: oauthData.profileImageUrl,
+        animeAvatarSeed: `oauth_${userId}`,
+        interests: [],
+        personality: [],
       })
       .returning();
     return user;
@@ -544,7 +577,11 @@ export class DatabaseStorage implements IStorage {
           updatedAt: events.updatedAt,
           organizer: {
             id: users.id,
+            username: users.username,
             email: users.email,
+            password: users.password,
+            oauthProvider: users.oauthProvider,
+            oauthId: users.oauthId,
             firstName: users.firstName,
             lastName: users.lastName,
             profileImageUrl: users.profileImageUrl,
@@ -623,7 +660,11 @@ export class DatabaseStorage implements IStorage {
           updatedAt: events.updatedAt,
           organizer: {
             id: users.id,
+            username: users.username,
             email: users.email,
+            password: users.password,
+            oauthProvider: users.oauthProvider,
+            oauthId: users.oauthId,
             firstName: users.firstName,
             lastName: users.lastName,
             profileImageUrl: users.profileImageUrl,
@@ -894,13 +935,17 @@ export class DatabaseStorage implements IStorage {
           .select({
             user: {
               id: users.id,
-              customAvatarUrl: users.customAvatarUrl,
-              animeAvatarSeed: users.animeAvatarSeed,
-              location: users.location,
+              username: users.username,
               email: users.email,
+              password: users.password,
+              oauthProvider: users.oauthProvider,
+              oauthId: users.oauthId,
               firstName: users.firstName,
               lastName: users.lastName,
               profileImageUrl: users.profileImageUrl,
+              customAvatarUrl: users.customAvatarUrl,
+              animeAvatarSeed: users.animeAvatarSeed,
+              location: users.location,
               interests: users.interests,
               personality: users.personality,
               aiSignature: users.aiSignature,
@@ -1194,7 +1239,11 @@ export class DatabaseStorage implements IStorage {
     const attendees = await db
       .select({
         id: users.id,
+        username: users.username,
         email: users.email,
+        password: users.password,
+        oauthProvider: users.oauthProvider,
+        oauthId: users.oauthId,
         firstName: users.firstName,
         lastName: users.lastName,
         profileImageUrl: users.profileImageUrl,
@@ -1235,7 +1284,11 @@ export class DatabaseStorage implements IStorage {
       const organizer = await db
         .select({
           id: users.id,
+          username: users.username,
           email: users.email,
+          password: users.password,
+          oauthProvider: users.oauthProvider,
+          oauthId: users.oauthId,
           firstName: users.firstName,
           lastName: users.lastName,
           profileImageUrl: users.profileImageUrl,
@@ -1670,13 +1723,17 @@ export class DatabaseStorage implements IStorage {
           .select({
             user: {
               id: users.id,
-              customAvatarUrl: users.customAvatarUrl,
-              animeAvatarSeed: users.animeAvatarSeed,
-              location: users.location,
+              username: users.username,
               email: users.email,
+              password: users.password,
+              oauthProvider: users.oauthProvider,
+              oauthId: users.oauthId,
               firstName: users.firstName,
               lastName: users.lastName,
               profileImageUrl: users.profileImageUrl,
+              customAvatarUrl: users.customAvatarUrl,
+              animeAvatarSeed: users.animeAvatarSeed,
+              location: users.location,
               interests: users.interests,
               personality: users.personality,
               aiSignature: users.aiSignature,

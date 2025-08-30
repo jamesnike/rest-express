@@ -239,6 +239,78 @@ export async function setupJWTAuth(app: Express) {
     }
   });
 
+  // OAuth login endpoint
+  app.post('/api/auth/oauth', async (req, res) => {
+    try {
+      const { oauthProvider, oauthId, email, firstName, lastName, profileImageUrl } = req.body;
+      
+      if (!oauthProvider || !oauthId || !email) {
+        return res.status(400).json({ message: "OAuth provider, ID, and email are required" });
+      }
+
+      // Check if user already exists with this OAuth account
+      let user = await storage.getUserByOAuth(oauthProvider, oauthId);
+      
+      if (!user) {
+        // Check if user exists with this email from different auth method
+        const existingUser = await storage.getUserByEmail(email);
+        
+        if (existingUser) {
+          // Link OAuth account to existing email-based account
+          await storage.upsertUser({
+            id: existingUser.id,
+            email: existingUser.email,
+            username: existingUser.username,
+            firstName: firstName || existingUser.firstName,
+            lastName: lastName || existingUser.lastName,
+            profileImageUrl: profileImageUrl || existingUser.profileImageUrl,
+            oauthProvider,
+            oauthId,
+            animeAvatarSeed: existingUser.animeAvatarSeed,
+            interests: existingUser.interests,
+            personality: existingUser.personality,
+            aiSignature: existingUser.aiSignature,
+          });
+          user = existingUser;
+        } else {
+          // Create new OAuth user
+          user = await storage.createOAuthUser({
+            oauthProvider,
+            oauthId,
+            email,
+            firstName: firstName || 'User',
+            lastName: lastName || 'OAuth',
+            profileImageUrl,
+          });
+        }
+      }
+
+      // Generate JWT token
+      const token = generateToken({
+        sub: user.id,
+        email: user.email || '',
+        firstName: user.firstName || undefined,
+        lastName: user.lastName || undefined,
+        profileImageUrl: user.profileImageUrl || undefined,
+      });
+
+      res.json({ 
+        token,
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          profileImageUrl: user.profileImageUrl
+        }
+      });
+    } catch (error) {
+      console.error("Error in OAuth login:", error);
+      res.status(500).json({ message: "OAuth login failed" });
+    }
+  });
+
   // Refresh token endpoint
   app.post('/api/auth/refresh', async (req, res) => {
     try {
