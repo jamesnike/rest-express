@@ -162,8 +162,8 @@ app.get('/api/auth/validate', async (req, res) => {
   }
 });
 
-// Test login page without Vite interference
-app.get('/login-test', (req, res) => {
+// Test login page without Vite interference - random route to avoid cache
+app.get('/auth-demo-12345', (req, res) => {
   res.send(`
 <!DOCTYPE html>
 <html>
