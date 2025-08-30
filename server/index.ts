@@ -816,6 +816,117 @@ app.get('/', (req, res) => {
   `);
 });
 
+// Super unique route to bypass all caching
+app.get('/jwt-login-' + Date.now(), (req, res) => {
+  res.send(`
+<!DOCTYPE html>
+<html>
+<head>
+    <title>EventConnect JWT Login</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;font-family:Arial;background:linear-gradient(45deg,#ff6b6b,#4ecdc4);color:white;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;">
+    <div style="background:white;color:#333;border-radius:20px;padding:30px;max-width:350px;width:100%;box-shadow:0 10px 30px rgba(0,0,0,0.2);">
+        <h1 style="text-align:center;margin-bottom:20px;color:#333;">🎯 EventConnect</h1>
+        <p style="text-align:center;margin-bottom:30px;color:#666;">JWT Login System</p>
+        
+        <button onclick="quickDemo()" style="width:100%;background:#4ecdc4;color:white;border:none;padding:15px;border-radius:10px;font-size:16px;margin-bottom:15px;cursor:pointer;font-weight:600;">
+            ⚡ Quick Demo Login
+        </button>
+        
+        <div style="margin:15px 0;text-align:center;color:#888;">- OR -</div>
+        
+        <input type="text" id="user" placeholder="Username" style="width:100%;padding:12px;margin-bottom:10px;border:2px solid #eee;border-radius:8px;font-size:16px;">
+        <input type="password" id="pass" placeholder="Password" style="width:100%;padding:12px;margin-bottom:15px;border:2px solid #eee;border-radius:8px;font-size:16px;">
+        
+        <button onclick="testLogin()" style="width:100%;background:#ff6b6b;color:white;border:none;padding:15px;border-radius:10px;font-size:16px;margin-bottom:10px;cursor:pointer;font-weight:600;">
+            🔑 Login
+        </button>
+        
+        <div id="status" style="margin-top:15px;padding:10px;border-radius:8px;display:none;"></div>
+    </div>
+    
+    <script>
+        console.log('🔥 Fresh JWT login page loaded!');
+        
+        function showStatus(msg, success) {
+            const div = document.getElementById('status');
+            div.style.display = 'block';
+            div.style.background = success ? '#d4edda' : '#f8d7da';
+            div.style.color = success ? '#155724' : '#721c24';
+            div.innerHTML = msg;
+        }
+        
+        async function quickDemo() {
+            showStatus('⏳ Creating demo account...', true);
+            
+            const username = 'demo' + Math.random().toString(36).substr(2, 6);
+            
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username,
+                        password: 'demo123',
+                        firstName: 'Demo',
+                        lastName: 'User'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.token) {
+                    showStatus(\`✅ Success! Username: \${data.user.username} | Password: demo123\`, true);
+                    document.getElementById('user').value = data.user.username;
+                    document.getElementById('pass').value = 'demo123';
+                } else {
+                    showStatus('❌ Demo failed: ' + data.message, false);
+                }
+            } catch (error) {
+                showStatus('❌ Error: ' + error.message, false);
+            }
+        }
+        
+        async function testLogin() {
+            const username = document.getElementById('user').value;
+            const password = document.getElementById('pass').value;
+            
+            if (!username || !password) {
+                showStatus('⚠️ Enter username and password', false);
+                return;
+            }
+            
+            showStatus('⏳ Logging in...', true);
+            
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.token) {
+                    showStatus(\`✅ Login Success! Welcome \${data.user.username}. JWT Token: \${data.token.substring(0, 25)}...\`, true);
+                } else {
+                    showStatus('❌ Login failed: ' + data.message, false);
+                }
+            } catch (error) {
+                showStatus('❌ Error: ' + error.message, false);
+            }
+        }
+    </script>
+</body>
+</html>
+  `);
+});
+
+// Print the route for user
+console.log('🔥 Test JWT at: https://local-event-connect.replit.app/jwt-login-' + Date.now());
+
 // Temporarily disable static files to test login
 // app.use(express.static(path.resolve(import.meta.dirname, "..", "client")));
 
