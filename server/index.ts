@@ -374,87 +374,303 @@ app.get('/mobile-login-test', (req, res) => {
   `);
 });
 
-// Test login page without Vite interference - random route to avoid cache
+// Complete Mobile Login with localStorage
 app.get('/auth-demo-12345', (req, res) => {
   res.send(`
 <!DOCTYPE html>
 <html>
 <head>
-    <title>EventConnect Login Test</title>
+    <title>EventConnect - Complete Mobile Login</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 0;
+        }
+        .app {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .login-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .login-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px 30px;
+            max-width: 380px;
+            width: 100%;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo h1 {
+            font-size: 2rem;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .logo p {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 15px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #333;
+            border: 2px solid #e1e5e9;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 12px;
+            display: none;
+        }
+        .result.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .result.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .dashboard {
+            display: none;
+            padding: 20px;
+            text-align: center;
+        }
+        .dashboard.active {
+            display: block;
+        }
+        .dashboard h2 {
+            color: white;
+            margin-bottom: 20px;
+        }
+        .dashboard .user-info {
+            background: rgba(255,255,255,0.2);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            color: white;
+        }
+        .logout-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 2px solid rgba(255,255,255,0.3);
+            padding: 12px 30px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+    </style>
 </head>
-<body style="margin:0;font-family:Arial;background:#000;">
-    <div style="width:100%;height:100vh;background:linear-gradient(45deg,#e74c3c,#f39c12);color:white;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;">
-        <h1 style="font-size:2.5rem;margin-bottom:1rem;">🔥 Login Test Page</h1>
-        <p style="font-size:1.2rem;margin-bottom:2rem;">Testing JWT Without Cache Issues</p>
+<body>
+    <div class="app">
+        <!-- Login View -->
+        <div id="login-view" class="login-container">
+            <div class="login-card">
+                <div class="logo">
+                    <h1>🎯 EventConnect</h1>
+                    <p>Mobile Event Discovery</p>
+                </div>
+                
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="username" placeholder="Enter your username">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="password" placeholder="Enter your password">
+                </div>
+                
+                <button class="btn btn-primary" onclick="handleLogin()">
+                    🔑 Sign In
+                </button>
+                <button class="btn btn-secondary" onclick="createDemo()">
+                    ⚡ Create Demo Account
+                </button>
+                
+                <div id="result" class="result"></div>
+            </div>
+        </div>
         
-        <div style="background:rgba(0,0,0,0.3);border-radius:15px;padding:25px;max-width:350px;width:100%;">
-            <button onclick="testRegister()" style="width:100%;background:#27ae60;color:white;border:none;padding:15px;font-size:16px;border-radius:8px;cursor:pointer;margin-bottom:15px;font-weight:600;">
-                🚀 Create Test User
+        <!-- Dashboard View (after login) -->
+        <div id="dashboard-view" class="dashboard">
+            <h2>🎉 Welcome to EventConnect!</h2>
+            <div class="user-info">
+                <div id="user-welcome"></div>
+                <div style="font-size: 0.9rem; margin-top: 10px; opacity: 0.8;">✅ JWT Login with localStorage persistence</div>
+            </div>
+            <button class="logout-btn" onclick="handleLogout()">
+                🚪 Sign Out
             </button>
-            
-            <div style="margin:15px 0;text-align:center;opacity:0.7;">Username & Password Login:</div>
-            
-            <input type="text" id="username" placeholder="Username" style="width:100%;padding:12px;margin-bottom:10px;border:none;border-radius:6px;font-size:16px;box-sizing:border-box;">
-            <input type="password" id="password" placeholder="Password" style="width:100%;padding:12px;margin-bottom:15px;border:none;border-radius:6px;font-size:16px;box-sizing:border-box;">
-            
-            <button onclick="testLogin()" style="width:100%;background:#3498db;color:white;border:none;padding:15px;font-size:16px;border-radius:8px;cursor:pointer;font-weight:600;">
-                🔑 Login
-            </button>
-            
-            <div id="result" style="margin-top:15px;padding:10px;background:rgba(255,255,255,0.1);border-radius:8px;display:none;"></div>
         </div>
     </div>
     
     <script>
-        console.log('Login test page loaded');
+        console.log('🔥 EventConnect Mobile App with localStorage loaded!');
         
-        async function testRegister() {
+        // Check for existing login on page load
+        window.addEventListener('load', checkExistingLogin);
+        
+        function showResult(message, isSuccess) {
             const resultDiv = document.getElementById('result');
+            resultDiv.className = 'result ' + (isSuccess ? 'success' : 'error');
+            resultDiv.innerHTML = message;
             resultDiv.style.display = 'block';
-            resultDiv.innerHTML = '⏳ Creating account...';
+        }
+        
+        function showDashboard(user) {
+            document.getElementById('login-view').style.display = 'none';
+            document.getElementById('dashboard-view').classList.add('active');
+            document.getElementById('user-welcome').innerHTML = \`
+                <div style="font-weight: 600; margin-bottom: 5px;">Welcome back!</div>
+                <div>\${user.firstName || user.username}</div>
+            \`;
+        }
+        
+        function showLogin() {
+            document.getElementById('dashboard-view').classList.remove('active');
+            document.getElementById('login-view').style.display = 'flex';
+        }
+        
+        function saveToken(token, user) {
+            localStorage.setItem('auth_token', token);
+            localStorage.setItem('user_data', JSON.stringify(user));
+            console.log('✅ Token saved to localStorage');
+        }
+        
+        function clearToken() {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('user_data');
+            console.log('✅ Token cleared from localStorage');
+        }
+        
+        async function checkExistingLogin() {
+            const token = localStorage.getItem('auth_token');
+            const userData = localStorage.getItem('user_data');
+            
+            if (!token || !userData) {
+                console.log('ℹ️ No existing login found');
+                return;
+            }
             
             try {
-                const username = 'user' + Date.now().toString().slice(-6);
+                // Validate token with server
+                const response = await fetch('/api/auth/validate', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
                 
+                if (response.ok) {
+                    const user = JSON.parse(userData);
+                    console.log('✅ Auto-login successful:', user.username);
+                    showDashboard(user);
+                } else {
+                    console.log('⚠️ Token expired, clearing storage');
+                    clearToken();
+                }
+            } catch (error) {
+                console.log('⚠️ Token validation failed, clearing storage');
+                clearToken();
+            }
+        }
+        
+        async function createDemo() {
+            showResult('⏳ Creating demo account...', true);
+            
+            const username = 'demo' + Date.now().toString().slice(-6);
+            
+            try {
                 const response = await fetch('/api/auth/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         username,
-                        password: 'test123',
-                        firstName: 'Test',
+                        password: 'demo123',
+                        firstName: 'Demo',
                         lastName: 'User'
                     })
                 });
                 
                 const data = await response.json();
-                console.log('Register response:', data);
                 
                 if (data.token) {
-                    resultDiv.innerHTML = '<div style="color:#2ecc71;font-weight:600;">✅ Account Created!</div><div>Username: ' + data.user.username + '</div><div style="font-size:0.9rem;margin-top:5px;">Token: ' + data.token.substring(0, 30) + '...</div>';
+                    showResult(\`
+                        <div style="font-weight:600;margin-bottom:10px;">✅ Demo Account Created!</div>
+                        <div><strong>Username:</strong> \${data.user.username}</div>
+                        <div><strong>Password:</strong> demo123</div>
+                        <div style="font-size:0.85rem;margin-top:8px;">Auto-logging you in...</div>
+                    \`, true);
+                    
+                    // Save to localStorage and show dashboard
+                    saveToken(data.token, data.user);
+                    setTimeout(() => showDashboard(data.user), 1500);
                 } else {
-                    resultDiv.innerHTML = '❌ Failed: ' + JSON.stringify(data);
+                    showResult('❌ Demo creation failed: ' + data.message, false);
                 }
             } catch (error) {
-                resultDiv.innerHTML = '❌ Error: ' + error.message;
+                showResult('❌ Error: ' + error.message, false);
             }
         }
         
-        async function testLogin() {
-            const resultDiv = document.getElementById('result');
+        async function handleLogin() {
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             
             if (!username || !password) {
-                resultDiv.style.display = 'block';
-                resultDiv.innerHTML = '⚠️ Please enter username and password';
+                showResult('⚠️ Please enter username and password', false);
                 return;
             }
             
-            resultDiv.style.display = 'block';
-            resultDiv.innerHTML = '⏳ Logging in...';
+            showResult('⏳ Signing you in...', true);
             
             try {
                 const response = await fetch('/api/auth/login', {
@@ -464,16 +680,25 @@ app.get('/auth-demo-12345', (req, res) => {
                 });
                 
                 const data = await response.json();
-                console.log('Login response:', data);
                 
                 if (data.token) {
-                    resultDiv.innerHTML = '<div style="color:#2ecc71;font-weight:600;">✅ Login Success!</div><div>Welcome: ' + data.user.username + '</div><div style="font-size:0.9rem;margin-top:5px;">Token: ' + data.token.substring(0, 30) + '...</div>';
+                    showResult('✅ Login successful! Redirecting...', true);
+                    
+                    // Save to localStorage and show dashboard
+                    saveToken(data.token, data.user);
+                    setTimeout(() => showDashboard(data.user), 1500);
                 } else {
-                    resultDiv.innerHTML = '❌ Login failed: ' + data.message;
+                    showResult('❌ Login failed: ' + data.message, false);
                 }
             } catch (error) {
-                resultDiv.innerHTML = '❌ Error: ' + error.message;
+                showResult('❌ Error: ' + error.message, false);
             }
+        }
+        
+        function handleLogout() {
+            clearToken();
+            showLogin();
+            showResult('✅ Signed out successfully', true);
         }
     </script>
 </body>
