@@ -269,7 +269,342 @@ app.get('/auth-demo-12345', (req, res) => {
   `);
 });
 
-// Serve index.html for all non-API routes
+// Main login page (no localStorage yet)
+app.get('/', (req, res) => {
+  res.send(`
+<!DOCTYPE html>
+<html>
+<head>
+    <title>EventConnect - Mobile Login</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px 30px;
+            max-width: 380px;
+            width: 100%;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo h1 {
+            font-size: 2rem;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .logo p {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 15px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #333;
+            border: 2px solid #e1e5e9;
+        }
+        .btn-secondary:hover {
+            background: #e9ecef;
+        }
+        .divider {
+            text-align: center;
+            margin: 20px 0;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 12px;
+            display: none;
+        }
+        .result.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .result.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 25px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 4px;
+        }
+        .tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .tab.active {
+            background: white;
+            color: #667eea;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <h1>🎯 EventConnect</h1>
+            <p>Mobile Event Discovery</p>
+        </div>
+        
+        <div class="tabs">
+            <div class="tab active" onclick="showTab('login')">Login</div>
+            <div class="tab" onclick="showTab('register')">Sign Up</div>
+        </div>
+        
+        <!-- Login Tab -->
+        <div id="login-tab" class="tab-content active">
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="login-username" placeholder="Enter your username">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="login-password" placeholder="Enter your password">
+            </div>
+            <button class="btn btn-primary" onclick="handleLogin()">
+                🔑 Sign In
+            </button>
+            <button class="btn btn-secondary" onclick="createDemoUser()">
+                ⚡ Try Demo Account
+            </button>
+        </div>
+        
+        <!-- Register Tab -->
+        <div id="register-tab" class="tab-content">
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="reg-username" placeholder="Choose a username">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="reg-password" placeholder="Create a password">
+            </div>
+            <div class="form-group">
+                <label>First Name</label>
+                <input type="text" id="reg-firstname" placeholder="Your first name">
+            </div>
+            <div class="form-group">
+                <label>Last Name</label>
+                <input type="text" id="reg-lastname" placeholder="Your last name">
+            </div>
+            <button class="btn btn-primary" onclick="handleRegister()">
+                🚀 Create Account
+            </button>
+        </div>
+        
+        <div id="result" class="result"></div>
+    </div>
+    
+    <script>
+        console.log('EventConnect Mobile Login loaded');
+        
+        function showTab(tabName) {
+            // Hide all tabs
+            document.getElementById('login-tab').classList.remove('active');
+            document.getElementById('register-tab').classList.remove('active');
+            
+            // Show selected tab
+            document.getElementById(tabName + '-tab').classList.add('active');
+            
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Clear results
+            document.getElementById('result').style.display = 'none';
+        }
+        
+        function showResult(message, isSuccess) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = 'result ' + (isSuccess ? 'success' : 'error');
+            resultDiv.innerHTML = message;
+            resultDiv.style.display = 'block';
+        }
+        
+        async function createDemoUser() {
+            showResult('⏳ Creating demo account...', true);
+            
+            const username = 'demo' + Date.now().toString().slice(-6);
+            
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username,
+                        password: 'demo123',
+                        firstName: 'Demo',
+                        lastName: 'User'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.token) {
+                    showResult(\`
+                        <div style="font-weight:600;margin-bottom:10px;">✅ Demo Account Created!</div>
+                        <div><strong>Username:</strong> \${data.user.username}</div>
+                        <div><strong>Password:</strong> demo123</div>
+                        <div style="font-size:0.85rem;margin-top:8px;opacity:0.8;">You can now login with these credentials!</div>
+                    \`, true);
+                } else {
+                    showResult('❌ Demo creation failed: ' + data.message, false);
+                }
+            } catch (error) {
+                showResult('❌ Error: ' + error.message, false);
+            }
+        }
+        
+        async function handleRegister() {
+            const username = document.getElementById('reg-username').value;
+            const password = document.getElementById('reg-password').value;
+            const firstName = document.getElementById('reg-firstname').value;
+            const lastName = document.getElementById('reg-lastname').value;
+            
+            if (!username || !password) {
+                showResult('⚠️ Please enter username and password', false);
+                return;
+            }
+            
+            showResult('⏳ Creating your account...', true);
+            
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, firstName, lastName })
+                });
+                
+                const data = await response.json();
+                
+                if (data.token) {
+                    showResult(\`
+                        <div style="font-weight:600;margin-bottom:10px;">✅ Account Created Successfully!</div>
+                        <div><strong>Welcome:</strong> \${data.user.firstName || data.user.username}</div>
+                        <div style="font-size:0.85rem;margin-top:8px;opacity:0.8;">You're now signed in! Token expires in 7 days.</div>
+                    \`, true);
+                } else {
+                    showResult('❌ Registration failed: ' + data.message, false);
+                }
+            } catch (error) {
+                showResult('❌ Error: ' + error.message, false);
+            }
+        }
+        
+        async function handleLogin() {
+            const username = document.getElementById('login-username').value;
+            const password = document.getElementById('login-password').value;
+            
+            if (!username || !password) {
+                showResult('⚠️ Please enter username and password', false);
+                return;
+            }
+            
+            showResult('⏳ Signing you in...', true);
+            
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.token) {
+                    showResult(\`
+                        <div style="font-weight:600;margin-bottom:10px;">✅ Welcome Back!</div>
+                        <div><strong>Signed in as:</strong> \${data.user.firstName || data.user.username}</div>
+                        <div style="font-size:0.85rem;margin-top:8px;opacity:0.8;">Login successful! Token expires in 7 days.</div>
+                    \`, true);
+                } else {
+                    showResult('❌ Login failed: ' + data.message, false);
+                }
+            } catch (error) {
+                showResult('❌ Error: ' + error.message, false);
+            }
+        }
+    </script>
+</body>
+</html>
+  `);
+});
+
+// Serve index.html for all other routes
 app.get('*', (req, res) => {
   res.sendFile(path.resolve(import.meta.dirname, "..", "client", "index.html"));
 });
