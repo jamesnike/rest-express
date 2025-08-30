@@ -1,48 +1,50 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-    <meta name="theme-color" content="#3b82f6" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <link rel="manifest" href="/manifest.json" />
-    <title>EventConnect - Mobile Event Discovery</title>
-  </head>
-  <body>
-    <div id="root">
-      <div style="width: 100%; height: 100vh; background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: Arial, sans-serif;">
-        <h1 style="font-size: 2rem; margin-bottom: 1rem;">EventConnect</h1>
-        <p style="margin-bottom: 2rem;">PWA Login System</p>
-        <button onclick="testLogin()" style="background: white; color: #3b82f6; border: none; padding: 12px 24px; font-size: 16px; border-radius: 8px; cursor: pointer;">Test Login</button>
-      </div>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>EventConnect Test</title>
+</head>
+<body style="margin: 0; font-family: Arial;">
+    <div style="width: 100%; height: 100vh; background: #3b82f6; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+        <h1>EventConnect Working!</h1>
+        <p>JWT Login System Ready</p>
+        <button onclick="doLogin()" style="background: white; color: #3b82f6; border: none; padding: 15px 30px; font-size: 18px; border-radius: 8px; cursor: pointer; margin-top: 20px;">Create Demo Account</button>
     </div>
+    
     <script>
-      async function testLogin() {
-        try {
-          const response = await fetch('/api/auth/register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              username: 'demo' + Math.random().toString(36).substr(2, 9),
-              password: 'demo123',
-              firstName: 'Demo',
-              lastName: 'User'
-            })
-          });
-          const data = await response.json();
-          if (data.token) {
-            localStorage.setItem('auth_token', data.token);
-            document.getElementById('root').innerHTML = '<div style="width: 100%; height: 100vh; background: linear-gradient(135deg, #10b981, #3b82f6); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: Arial, sans-serif;"><h1>✅ Login Successful!</h1><p>JWT Token saved to localStorage</p><p>Username: ' + data.user.username + '</p><button onclick="location.reload()" style="background: white; color: #10b981; border: none; padding: 12px 24px; font-size: 16px; border-radius: 8px; cursor: pointer; margin-top: 20px;">Reload App</button></div>';
-          } else {
-            alert('Registration failed: ' + JSON.stringify(data));
-          }
-        } catch (error) {
-          alert('Network error: ' + error.message);
+        console.log('JavaScript is loading');
+        
+        async function doLogin() {
+            console.log('Button clicked');
+            try {
+                const username = 'demo' + Math.random().toString(36).substr(2, 5);
+                console.log('Creating user:', username);
+                
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: username,
+                        password: 'demo123',
+                        firstName: 'Demo',
+                        lastName: 'User'
+                    })
+                });
+                
+                const data = await response.json();
+                console.log('Response:', data);
+                
+                if (data.token) {
+                    localStorage.setItem('auth_token', data.token);
+                    document.body.innerHTML = '<div style="width: 100%; height: 100vh; background: linear-gradient(135deg, #10b981, #3b82f6); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: Arial, sans-serif;"><h1>✅ Login Success!</h1><p>Username: ' + data.user.username + '</p><p>JWT Token Saved!</p><button onclick="location.reload()" style="background: white; color: #10b981; border: none; padding: 15px 30px; font-size: 18px; border-radius: 8px; cursor: pointer; margin-top: 20px;">Continue to App</button></div>';
+                } else {
+                    alert('Failed: ' + JSON.stringify(data));
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+                console.error('Login error:', error);
+            }
         }
-      }
     </script>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+</body>
 </html>
