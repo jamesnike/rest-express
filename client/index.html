@@ -11,9 +11,38 @@
     <title>EventConnect - Mobile Event Discovery</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div style="width: 100%; height: 100vh; background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: Arial, sans-serif;">
+        <h1 style="font-size: 2rem; margin-bottom: 1rem;">EventConnect</h1>
+        <p style="margin-bottom: 2rem;">PWA Login System</p>
+        <button onclick="testLogin()" style="background: white; color: #3b82f6; border: none; padding: 12px 24px; font-size: 16px; border-radius: 8px; cursor: pointer;">Test Login</button>
+      </div>
+    </div>
+    <script>
+      async function testLogin() {
+        try {
+          const response = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              username: 'demo' + Math.random().toString(36).substr(2, 9),
+              password: 'demo123',
+              firstName: 'Demo',
+              lastName: 'User'
+            })
+          });
+          const data = await response.json();
+          if (data.token) {
+            localStorage.setItem('auth_token', data.token);
+            document.getElementById('root').innerHTML = '<div style="width: 100%; height: 100vh; background: linear-gradient(135deg, #10b981, #3b82f6); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: Arial, sans-serif;"><h1>✅ Login Successful!</h1><p>JWT Token saved to localStorage</p><p>Username: ' + data.user.username + '</p><button onclick="location.reload()" style="background: white; color: #10b981; border: none; padding: 12px 24px; font-size: 16px; border-radius: 8px; cursor: pointer; margin-top: 20px;">Reload App</button></div>';
+          } else {
+            alert('Registration failed: ' + JSON.stringify(data));
+          }
+        } catch (error) {
+          alert('Network error: ' + error.message);
+        }
+      }
+    </script>
     <script type="module" src="/src/main.tsx"></script>
-    <!-- This is a replit script which adds a banner on the top of the page when opened in development mode outside the replit environment -->
-    <script type="text/javascript" src="https://replit.com/public/js/replit-dev-banner.js"></script>
   </body>
 </html>
