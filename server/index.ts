@@ -7,7 +7,13 @@ import { generateToken, verifyToken } from "./jwtAuth";
 const app = express();
 app.use(express.json());
 
-console.log("🔥 Test JWT at: https://local-event-connect.replit.app/jwt-login-" + Date.now());
+const debugId = Date.now();
+console.log("🔥 Test JWT at: https://local-event-connect.replit.app/jwt-login-" + debugId);
+
+// Simple debug route 
+app.get('/debug-' + debugId, (req, res) => {
+  res.send(`SERVER RUNNING! Time: ${new Date().toISOString()}, ProcessID: ${process.pid}`);
+});
 
 // JWT Authentication Routes
 app.post('/api/auth/register', async (req, res) => {
@@ -169,9 +175,23 @@ app.post('/api/auth/oauth', async (req, res) => {
   }
 });
 
-// JSON endpoint to bypass HTML middleware
-const jsonRoute = '/api/oauth-content-' + Date.now();
-console.log('🚀 URGENT: Copy this URL exactly to see React OAuth: https://local-event-connect.replit.app' + jsonRoute + '.html');
+// Multiple API routes to bypass middleware
+const timestamp = Date.now();
+console.log('🚀 TRY THESE URLS:');
+console.log('   Option 1: https://local-event-connect.replit.app/api/test-oauth-' + timestamp);
+console.log('   Option 2: https://local-event-connect.replit.app/api/oauth-content-' + timestamp + '.html');
+
+// Try different API route patterns
+app.get('/api/test-oauth-' + timestamp, (req, res) => {
+  res.json({ 
+    success: true, 
+    message: 'Custom API route working!', 
+    timestamp: new Date().toISOString(),
+    route: 'test-oauth'
+  });
+});
+
+const jsonRoute = '/api/oauth-content-' + timestamp;
 
 app.get(jsonRoute + '.html', (req, res) => {
   // Pure HTML without any framework dependencies
