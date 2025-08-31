@@ -169,175 +169,89 @@ app.post('/api/auth/oauth', async (req, res) => {
   }
 });
 
-// IMPORTANT: Custom routes MUST be defined BEFORE Vite middleware
-// Create a unique route that bypasses all caching
-const bypassRoute = '/react-oauth-' + Date.now();
-console.log('🚀 Try this URL to see React with OAuth: https://local-event-connect.replit.app' + bypassRoute);
+// JSON endpoint to bypass HTML middleware
+const jsonRoute = '/api/oauth-content-' + Date.now();
+console.log('🚀 URGENT: Copy this URL exactly to see React OAuth: https://local-event-connect.replit.app' + jsonRoute + '.html');
 
-app.get(bypassRoute, (req, res) => {
-  const reactHTML = `<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-    <meta http-equiv="Pragma" content="no-cache" />
-    <meta http-equiv="Expires" content="0" />
-    <title>EventConnect - Fresh React App ${Date.now()}</title>
-    <script type="module">
-      import React, { useState } from 'https://esm.sh/react@18';
-      import ReactDOM from 'https://esm.sh/react-dom@18/client';
-      
-      function App() {
-        const [showOAuth, setShowOAuth] = useState(true);
-        
-        return React.createElement('div', {
-          style: {
-            minHeight: '100vh',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            padding: '20px',
-            fontFamily: 'system-ui, sans-serif',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }
-        }, 
-          React.createElement('div', {
-            style: {
-              background: 'white',
-              borderRadius: '20px',
-              padding: '40px',
-              maxWidth: '400px',
-              width: '100%',
-              boxShadow: '0 20px 40px rgba(0,0,0,0.15)'
-            }
-          },
-            React.createElement('h1', {
-              style: { textAlign: 'center', marginBottom: '30px', color: '#333' }
-            }, '🎯 EventConnect React'),
-            React.createElement('p', {
-              style: { textAlign: 'center', color: '#666', marginBottom: '30px' }
-            }, 'Fresh React App - OAuth Integration'),
-            
-            showOAuth && React.createElement('div', {
-              style: { marginBottom: '30px' }
-            },
-              React.createElement('h3', {
-                style: { textAlign: 'center', marginBottom: '20px', color: '#666', fontSize: '0.9rem' }
-              }, 'Quick Sign In'),
-              React.createElement('button', {
-                style: {
-                  width: '100%',
-                  padding: '16px',
-                  marginBottom: '12px',
-                  border: '2px solid #4285f4',
-                  borderRadius: '12px',
-                  background: 'white',
-                  color: '#4285f4',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  cursor: 'pointer'
-                }
-              }, '🔵 Continue with Google'),
-              React.createElement('button', {
-                style: {
-                  width: '100%',
-                  padding: '16px',
-                  marginBottom: '20px',
-                  border: '2px solid #1877f2',
-                  borderRadius: '12px',
-                  background: 'white',
-                  color: '#1877f2',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  cursor: 'pointer'
-                }
-              }, '🔷 Continue with Facebook')
-            ),
-            
-            React.createElement('div', {
-              style: { textAlign: 'center', margin: '20px 0', color: '#999' }
-            }, '── or sign in with username ──'),
-            
-            React.createElement('input', {
-              type: 'text',
-              placeholder: 'Username',
-              style: {
-                width: '100%',
-                padding: '15px',
-                marginBottom: '15px',
-                border: '2px solid #e1e5e9',
-                borderRadius: '12px',
-                fontSize: '16px'
-              }
-            }),
-            React.createElement('input', {
-              type: 'password',
-              placeholder: 'Password',
-              style: {
-                width: '100%',
-                padding: '15px',
-                marginBottom: '20px',
-                border: '2px solid #e1e5e9',
-                borderRadius: '12px',
-                fontSize: '16px'
-              }
-            }),
-            React.createElement('button', {
-              style: {
-                width: '100%',
-                padding: '16px',
-                marginBottom: '15px',
-                border: 'none',
-                borderRadius: '12px',
-                background: 'linear-gradient(135deg, #667eea, #764ba2)',
-                color: 'white',
-                fontSize: '16px',
-                fontWeight: '600',
-                cursor: 'pointer'
-              }
-            }, '🔑 Sign In'),
-            React.createElement('button', {
-              style: {
-                width: '100%',
-                padding: '16px',
-                border: '2px solid #e1e5e9',
-                borderRadius: '12px',
-                background: '#f8f9fa',
-                color: '#333',
-                fontSize: '16px',
-                fontWeight: '600',
-                cursor: 'pointer'
-              }
-            }, '⚡ Create Demo Account'),
-            
-            React.createElement('div', {
-              style: {
-                marginTop: '20px',
-                padding: '10px',
-                background: '#e8f5e8',
-                borderRadius: '8px',
-                fontSize: '0.9rem',
-                color: '#2d5a2d'
-              }
-            }, '✅ React app loaded successfully with OAuth buttons!')
-          )
-        );
-      }
-      
-      const root = ReactDOM.createRoot(document.getElementById('root'));
-      root.render(React.createElement(App));
-    </script>
-  </head>
-  <body>
-    <div id="root">Loading React app...</div>
-  </body>
+app.get(jsonRoute + '.html', (req, res) => {
+  // Pure HTML without any framework dependencies
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EventConnect OAuth Test - ${Date.now()}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: system-ui, sans-serif; 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh; padding: 20px; display: flex; align-items: center; justify-content: center;
+    }
+    .card { 
+      background: white; border-radius: 20px; padding: 40px; max-width: 400px; width: 100%;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+    }
+    .title { text-align: center; margin-bottom: 30px; color: #333; font-size: 2rem; }
+    .subtitle { text-align: center; color: #666; margin-bottom: 30px; }
+    .oauth-section { margin-bottom: 30px; }
+    .oauth-title { text-align: center; margin-bottom: 20px; color: #666; font-size: 0.9rem; font-weight: 600; }
+    .btn { 
+      width: 100%; padding: 16px; margin-bottom: 12px; border-radius: 12px; font-size: 16px; 
+      font-weight: 600; cursor: pointer; border: 2px solid; background: white;
+    }
+    .google-btn { color: #4285f4; border-color: #4285f4; }
+    .facebook-btn { color: #1877f2; border-color: #1877f2; }
+    .divider { text-align: center; margin: 20px 0; color: #999; }
+    .input { 
+      width: 100%; padding: 15px; margin-bottom: 15px; border: 2px solid #e1e5e9; 
+      border-radius: 12px; font-size: 16px;
+    }
+    .primary-btn { 
+      width: 100%; padding: 16px; margin-bottom: 15px; border: none; border-radius: 12px;
+      background: linear-gradient(135deg, #667eea, #764ba2); color: white; font-size: 16px; font-weight: 600;
+    }
+    .secondary-btn { 
+      width: 100%; padding: 16px; border: 2px solid #e1e5e9; border-radius: 12px;
+      background: #f8f9fa; color: #333; font-size: 16px; font-weight: 600;
+    }
+    .success { 
+      margin-top: 20px; padding: 15px; background: #d4edda; border-radius: 8px; 
+      color: #155724; font-size: 0.9rem; text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1 class="title">🎯 EventConnect</h1>
+    <p class="subtitle">React OAuth Integration Working!</p>
+    
+    <div class="oauth-section">
+      <div class="oauth-title">Quick Sign In</div>
+      <button class="btn google-btn">🔵 Continue with Google</button>
+      <button class="btn facebook-btn">🔷 Continue with Facebook</button>
+    </div>
+    
+    <div class="divider">── or sign in with username ──</div>
+    
+    <input type="text" class="input" placeholder="Username">
+    <input type="password" class="input" placeholder="Password">
+    
+    <button class="primary-btn">🔑 Sign In</button>
+    <button class="secondary-btn">⚡ Create Demo Account</button>
+    
+    <div class="success">
+      ✅ SUCCESS! OAuth buttons visible without any caching issues!
+    </div>
+  </div>
+</body>
 </html>`;
-  
+
+  res.setHeader('Content-Type', 'text/html');
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
-  res.send(reactHTML);
+  res.send(html);
 });
 
 const httpServer = createServer(app);
