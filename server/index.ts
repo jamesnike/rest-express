@@ -169,8 +169,12 @@ app.post('/api/auth/oauth', async (req, res) => {
   }
 });
 
-// Fresh React app route to bypass all caching
-app.get('/fresh-react-app', (req, res) => {
+// IMPORTANT: Custom routes MUST be defined BEFORE Vite middleware
+// Create a unique route that bypasses all caching
+const bypassRoute = '/react-oauth-' + Date.now();
+console.log('🚀 Try this URL to see React with OAuth: https://local-event-connect.replit.app' + bypassRoute);
+
+app.get(bypassRoute, (req, res) => {
   const reactHTML = `<!DOCTYPE html>
 <html lang="en">
   <head>
@@ -336,11 +340,9 @@ app.get('/fresh-react-app', (req, res) => {
   res.send(reactHTML);
 });
 
-// React app handles all authentication UI
-
 const httpServer = createServer(app);
 
-// Setup Vite after creating server
+// Setup Vite AFTER all custom routes are defined
 const server = await import("./vite");
 await server.setupVite(app, httpServer);
 
