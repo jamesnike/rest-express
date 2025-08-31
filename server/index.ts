@@ -283,9 +283,16 @@ const httpServer = createServer(app);
 const server = await import("./vite");
 await server.setupVite(app, httpServer);
 
-httpServer.listen(5000, '0.0.0.0', () => {
-  console.log("🚀 EventConnect server running on port 5000");
+// Keep port 5000 for Replit workflow compatibility
+const PORT = process.env.PORT || 5000;
+httpServer.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 EventConnect server running on port ${PORT}`);
   console.log("📱 Access your PWA at: https://local-event-connect.replit.app");
+  console.log("🔥 IMPORTANT: If you still see orange page, try these steps:");
+  console.log("   1. Open Developer Tools (F12)");
+  console.log("   2. Go to Application tab > Storage");
+  console.log("   3. Click 'Clear site data' and check all boxes");
+  console.log("   4. Close and reopen browser tab");
 });
 
 export default app;
