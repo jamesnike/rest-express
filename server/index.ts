@@ -7,6 +7,9 @@ import { generateToken, verifyToken } from "./jwtAuth";
 const app = express();
 app.use(express.json());
 
+// Force production-like environment to avoid dev tooling injection
+process.env.NODE_ENV = 'production';
+
 const debugId = Date.now();
 console.log("🔥 Test JWT at: https://local-event-connect.replit.app/jwt-login-" + debugId);
 
