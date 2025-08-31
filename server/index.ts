@@ -32,6 +32,7 @@ app.post('/api/auth/register', async (req, res) => {
     }
 
     const user = await storage.createUser({
+      id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       username,
       password,
       firstName,
@@ -107,7 +108,10 @@ app.post('/api/auth/validate', async (req, res) => {
 
     const token = authHeader.substring(7);
     const decoded = verifyToken(token);
-    const user = await storage.getUser(decoded.userId);
+    if (!decoded || !decoded.sub) {
+      return res.status(401).json({ message: 'Invalid token payload' });
+    }
+    const user = await storage.getUser(decoded.sub);
     
     if (!user) {
       return res.status(401).json({ message: 'User not found' });
@@ -143,10 +147,11 @@ app.post('/api/auth/oauth', async (req, res) => {
     if (!user) {
       // Create new user with OAuth data
       user = await storage.createUser({
+        id: `oauth_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         email: email || `${oauthId}@${oauthProvider}.oauth`,
         firstName: firstName || 'User',
         lastName: lastName || oauthProvider.charAt(0).toUpperCase() + oauthProvider.slice(1),
-        profileImageUrl,
+        profileImageUrl: profileImageUrl || null,
         oauthProvider,
         oauthId,
       });
@@ -284,7 +289,7 @@ const server = await import("./vite");
 await server.setupVite(app, httpServer);
 
 // Keep port 5000 for Replit workflow compatibility
-const PORT = process.env.PORT || 5000;
+const PORT = parseInt(process.env.PORT || '5000', 10);
 httpServer.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 EventConnect server running on port ${PORT}`);
   console.log("📱 Access your PWA at: https://local-event-connect.replit.app");
