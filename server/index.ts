@@ -183,6 +183,39 @@ app.post('/api/auth/oauth', async (req, res) => {
   }
 });
 
+// JWT-compatible user endpoint for the app pages
+app.get('/api/auth/user', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+
+    const token = authHeader.substring(7);
+    const decoded = verifyToken(token);
+    if (!decoded || !decoded.sub) {
+      return res.status(401).json({ message: 'Invalid token payload' });
+    }
+    
+    const user = await storage.getUser(decoded.sub);
+    if (!user) {
+      return res.status(401).json({ message: 'User not found' });
+    }
+
+    // Return user in the format expected by the app
+    res.json({
+      id: user.id,
+      username: user.username,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      profileImageUrl: user.profileImageUrl,
+    });
+  } catch (error) {
+    res.status(401).json({ message: 'Unauthorized' });
+  }
+});
+
 // Multiple API routes to bypass middleware
 const timestamp = Date.now();
 console.log('🚀 TRY THESE URLS:');

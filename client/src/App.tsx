@@ -1,44 +1,30 @@
 import { useState } from 'react';
+import { Switch, Route } from 'wouter';
 import { useHybridAuth } from '@/hooks/useHybridAuth';
 import { HybridLoginForm } from '@/components/auth/HybridLoginForm';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Toaster } from '@/components/ui/toaster';
+import Home from '@/pages/home';
+import Browse from '@/pages/browse';
+import Profile from '@/pages/profile';
+import MyEvents from '@/pages/my-events';
 
-function Dashboard({ user, onLogout }: { user: any, onLogout: () => void }) {
+function AppRouter() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 p-4">
-      <div className="max-w-md mx-auto pt-8">
-        <Card>
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl">🎉 Welcome!</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="text-center space-y-2">
-              <div className="text-lg font-semibold">
-                {user.firstName} {user.lastName}
-              </div>
-              {user.username && (
-                <div className="text-sm text-gray-600">@{user.username}</div>
-              )}
-              <div className="text-sm text-gray-500">{user.email}</div>
-              <div className="text-xs text-green-600 bg-green-50 px-3 py-1 rounded-full inline-block">
-                ✅ JWT Authentication Active
-              </div>
-            </div>
-            
-            <Button 
-              onClick={onLogout}
-              variant="outline" 
-              className="w-full"
-            >
-              🚪 Sign Out
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+    <Switch>
+      <Route path="/" component={Home} />
+      <Route path="/browse" component={Browse} />
+      <Route path="/my-events" component={MyEvents} />
+      <Route path="/profile" component={Profile} />
+      <Route>
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">Page Not Found</h1>
+            <p className="text-gray-600">The page you're looking for doesn't exist.</p>
+          </div>
+        </div>
+      </Route>
+    </Switch>
   );
 }
 
@@ -76,7 +62,7 @@ export default function App() {
   return (
     <>
       {isAuthenticated ? (
-        <Dashboard user={user} onLogout={logout} />
+        <AppRouter />
       ) : (
         <HybridLoginForm onSuccess={handleAuthSuccess} onError={handleAuthError} />
       )}
