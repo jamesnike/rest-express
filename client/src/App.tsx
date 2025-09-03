@@ -47,7 +47,9 @@ export default function App() {
   const { toast } = useToast();
 
   const handleAuthSuccess = (token: string, user: any) => {
+    console.log('🎯 OAuth Success - About to login:', { token: token?.substring(0, 20) + '...', user });
     login(token, user);
+    console.log('🎯 Login called, isAuthenticated should be:', isAuthenticated);
     toast({
       title: "Welcome!",
       description: `Successfully signed in as ${user.firstName}`,
