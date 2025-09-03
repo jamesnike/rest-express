@@ -66,11 +66,9 @@ export function useHybridAuth() {
   };
 
   const login = (token: string, user: User) => {
-    console.log('🔐 useHybridAuth.login called with:', { token: token?.substring(0, 20) + '...', user });
     localStorage.setItem('auth_token', token);
     localStorage.setItem('user_data', JSON.stringify(user));
     setAuthState({ user, isAuthenticated: true, isLoading: false });
-    console.log('🔐 Auth state updated to authenticated');
   };
 
   const logout = () => {

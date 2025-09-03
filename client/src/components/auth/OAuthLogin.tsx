@@ -39,8 +39,6 @@ export function OAuthLogin({ onSuccess, onError }: OAuthLoginProps) {
       }
     } catch (error: any) {
       console.error(`${provider} login error:`, error);
-      console.error('Current domain:', window.location.hostname);
-      console.error('Full URL:', window.location.href);
       onError(error.message || `${provider} login failed`);
     } finally {
       setIsLoading(null);
