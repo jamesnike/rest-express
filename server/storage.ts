@@ -289,7 +289,8 @@ export class DatabaseStorage implements IStorage {
     // Add skipped events exclusion if there are any
     if (userSkippedEvents.length > 0) {
       console.log(`Filtering out skipped events for user ${userId}:`, userSkippedEvents);
-      whereConditions.push(notInArray(events.id, userSkippedEvents));
+      // Use a simpler approach to avoid type issues
+      whereConditions.push(sql`${events.id} NOT IN (${userSkippedEvents.map(id => id).join(', ')})`);
     } else {
       console.log(`No skipped events to filter for user ${userId}`);
     }
