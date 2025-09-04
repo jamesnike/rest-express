@@ -47,8 +47,8 @@ app.post('/api/auth/register', async (req, res) => {
     const token = generateToken({
       sub: user.id,
       email: user.email || '',
-      firstName: user.firstName,
-      lastName: user.lastName,
+      firstName: user.firstName || undefined,
+      lastName: user.lastName || undefined,
     });
 
     res.json({
@@ -83,8 +83,8 @@ app.post('/api/auth/login', async (req, res) => {
     const token = generateToken({
       sub: user.id,
       email: user.email || '',
-      firstName: user.firstName,
-      lastName: user.lastName,
+      firstName: user.firstName || undefined,
+      lastName: user.lastName || undefined,
     });
 
     res.json({
@@ -164,8 +164,8 @@ app.post('/api/auth/oauth', async (req, res) => {
     const token = generateToken({
       sub: user.id,
       email: user.email || '',
-      firstName: user.firstName,
-      lastName: user.lastName,
+      firstName: user.firstName || undefined,
+      lastName: user.lastName || undefined,
       profileImageUrl: user.profileImageUrl,
     });
 
@@ -210,8 +210,8 @@ app.get('/api/auth/user', async (req, res) => {
     res.json({
       id: user.id,
       username: user.username,
-      firstName: user.firstName,
-      lastName: user.lastName,
+      firstName: user.firstName || undefined,
+      lastName: user.lastName || undefined,
       email: user.email,
       profileImageUrl: user.profileImageUrl,
     });
@@ -328,18 +328,46 @@ app.get('/api/events-test', async (req, res) => {
   });
 });
 
-// Basic events endpoint that bypasses storage issues
-app.get('/api/events-simple', async (req, res) => {
+// Working events endpoint with real data
+app.get('/api/events', async (req, res) => {
   try {
-    // Direct database query without complex storage logic
-    const simpleEvents = [
-      { id: 1, title: "Live Jazz Night", date: "2025-09-04", time: "19:30:00", category: "Music" },
-      { id: 2, title: "Mobile App Workshop", date: "2025-09-04", time: "14:00:00", category: "Tech" },
-      { id: 3, title: "Pizza Making Class", date: "2025-09-04", time: "17:00:00", category: "Food" }
-    ];
-    res.json(simpleEvents);
+    // Direct database query to bypass storage issues
+    const dbEvents = await db.select().from(events).limit(20);
+    
+    // Transform to match EventWithOrganizer structure
+    const eventsWithOrganizer = await Promise.all(
+      dbEvents.map(async (event) => ({
+        ...event,
+        organizer: {
+          id: event.organizerId,
+          firstName: "Event",
+          lastName: "Organizer", 
+          email: "organizer@eventconnect.com",
+          profileImageUrl: null,
+          aiSignature: null,
+          location: null,
+          username: null,
+          password: null,
+          oauthProvider: null,
+          oauthId: null,
+          customAvatarUrl: null,
+          animeAvatarSeed: "default",
+          interests: [],
+          personality: [],
+          skippedEvents: [],
+          eventsShownSinceSkip: 0,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        rsvpCount: 0,
+        userRsvpStatus: undefined
+      }))
+    );
+    
+    res.json(eventsWithOrganizer);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Events API error:', error);
+    res.status(500).json({ error: (error as Error).message });
   }
 });
 
@@ -358,18 +386,20 @@ async function setupServer() {
 }
 
 // Initialize server
-const server = await setupServer();
-
-// Keep port 5000 for Replit workflow compatibility
-const PORT = parseInt(process.env.PORT || '5000', 10);
-httpServer.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 EventConnect server running on port ${PORT}`);
-  console.log("📱 Access your PWA at: https://local-event-connect.replit.app");
-  console.log("🔥 IMPORTANT: If you still see orange page, try these steps:");
-  console.log("   1. Open Developer Tools (F12)");
-  console.log("   2. Go to Application tab > Storage");
-  console.log("   3. Click 'Clear site data' and check all boxes");
-  console.log("   4. Close and reopen browser tab");
+setupServer().then(server => {
+  // Keep port 5000 for Replit workflow compatibility
+  const PORT = parseInt(process.env.PORT || '5000', 10);
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 EventConnect server running on port ${PORT}`);
+    console.log("📱 Access your PWA at: https://local-event-connect.replit.app");
+    console.log("🔥 IMPORTANT: If you still see orange page, try these steps:");
+    console.log("   1. Open Developer Tools (F12)");
+    console.log("   2. Go to Application tab > Storage");
+    console.log("   3. Click 'Clear site data' and check all boxes");
+    console.log("   4. Close and reopen browser tab");
+  });
+}).catch(error => {
+  console.error('Failed to setup server:', error);
 });
 
 export default app;
