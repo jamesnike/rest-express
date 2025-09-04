@@ -1,11 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { getQueryFn } from "@/lib/queryClient";
+import { User } from "@shared/schema";
 
 export function useAuth() {
   // Check if we have a token first
   const hasToken = typeof window !== 'undefined' ? !!localStorage.getItem('auth_token') : false;
   
-  const { data: user, isLoading, error, refetch } = useQuery({
+  const { data: user, isLoading, error, refetch } = useQuery<User>({
     queryKey: ["/api/auth/user"],
     queryFn: getQueryFn({ on401: "returnNull" }),
     enabled: hasToken, // Only run query if we have a token

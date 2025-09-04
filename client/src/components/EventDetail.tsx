@@ -699,7 +699,7 @@ export default function EventDetail({ event, onClose, showGroupChatButton = fals
             <div className="flex items-center space-x-3">
               <div className="flex -space-x-2">
                 {/* Show attendees (organizer already included in backend) */}
-                {attendees.slice(0, 10).map((attendee, index) => (
+                {attendees.slice(0, 10).map((attendee: any, index: number) => (
                   <AnimeAvatar 
                     key={attendee.id}
                     seed={attendee.animeAvatarSeed} 
