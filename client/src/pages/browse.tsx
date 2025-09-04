@@ -59,7 +59,7 @@ export default function Browse() {
             <div className="flex justify-center items-center h-64">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
-          ) : filteredEvents.length === 0 ? (
+          ) : !filteredEvents || filteredEvents.length === 0 ? (
             <div className="text-center py-12">
               <Search className="w-16 h-16 text-gray-300 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No events found</h3>
@@ -67,7 +67,7 @@ export default function Browse() {
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredEvents.map((event) => (
+              {filteredEvents?.map((event) => (
                 <EventCard
                   key={event.id}
                   event={event}
