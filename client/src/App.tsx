@@ -11,6 +11,8 @@ import MyEvents from '@/pages/my-events';
 import EventContentPage from '@/pages/event-content';
 
 function AppRouter() {
+  console.log('🔀 AppRouter - Current path:', window.location.pathname);
+  
   return (
     <Switch>
       <Route path="/" component={Home} />
@@ -23,6 +25,7 @@ function AppRouter() {
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Page Not Found</h1>
             <p className="text-gray-600">The page you're looking for doesn't exist.</p>
+            <p className="text-sm text-gray-500 mt-2">Current path: {window.location.pathname}</p>
           </div>
         </div>
       </Route>
@@ -35,7 +38,15 @@ export default function App() {
   const { toast } = useToast();
 
   const handleAuthSuccess = (token: string, user: any) => {
+    console.log('🔐 Auth success - setting auth state and redirecting to home');
     login(token, user);
+    
+    // Ensure we're on the home page after successful authentication
+    if (window.location.pathname !== '/') {
+      console.log('🔐 Auth success - redirecting to home page from:', window.location.pathname);
+      window.history.pushState({}, '', '/');
+    }
+    
     toast({
       title: "Welcome!",
       description: `Successfully signed in as ${user.firstName}`,
