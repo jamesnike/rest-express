@@ -85,7 +85,7 @@ export default function Home() {
   const [lastSkipTime, setLastSkipTime] = useState(0);
   const [skipQueue, setSkipQueue] = useState<Set<number>>(new Set());
   const [eventBeingSkipped, setEventBeingSkipped] = useState<number | null>(null);
-  const [lastActiveTab, setLastActiveTab] = useState<'chat' | 'similar'>(() => {
+  const [lastActiveTab, setLastActiveTab] = useState<'chat' | 'similar' | 'favorites'>(() => {
     const saved = loadHomeState();
     return saved?.lastActiveTab || 'chat';
   });
@@ -309,10 +309,14 @@ export default function Home() {
           setLastActiveTab(eventContentTab as 'chat' | 'similar' | 'favorites');
         }
         
+        console.log('🏠 Home page - EventContent setup complete, state updated');
+        
         console.log('🏠 Home page - showing EventContent for event:', event.id);
         console.log('🏠 Home page - showContentCard set to true, showDetailCard set to false');
       } else {
         console.log('🏠 Home page - event not found in events array for EventContent');
+        console.log('🏠 Home page - Available event IDs:', events?.map(e => e.id));
+        console.log('🏠 Home page - Looking for event ID:', eventId);
       }
       
       // Clear localStorage flags
