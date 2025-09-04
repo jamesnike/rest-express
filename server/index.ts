@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { setupVite } from "./vite";
 import { storage } from "./storage";
 import { generateToken, verifyToken } from "./jwtAuth";
+import { registerRoutes } from "./routes";
 
 const app = express();
 app.use(express.json());
@@ -317,9 +318,20 @@ app.get(jsonRoute + '.html', (req, res) => {
 
 const httpServer = createServer(app);
 
-// Setup Vite AFTER all custom routes are defined
-const server = await import("./vite");
-await server.setupVite(app, httpServer);
+// Setup routes and Vite in async function
+async function setupServer() {
+  // Register API routes BEFORE Vite setup
+  await registerRoutes(app);
+
+  // Setup Vite AFTER all custom routes are defined
+  const server = await import("./vite");
+  await server.setupVite(app, httpServer);
+  
+  return httpServer;
+}
+
+// Initialize server
+const server = await setupServer();
 
 // Keep port 5000 for Replit workflow compatibility
 const PORT = parseInt(process.env.PORT || '5000', 10);
