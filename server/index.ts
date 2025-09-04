@@ -371,16 +371,136 @@ app.get('/api/events', async (req, res) => {
   }
 });
 
+// API handler function to avoid duplication
+async function handleEventsAPI(req: any, res: any) {
+  try {
+    console.log('🔥 Events API called via middleware');
+    const dbEvents = await db.select().from(events).limit(20);
+    
+    const eventsWithOrganizer = await Promise.all(
+      dbEvents.map(async (event) => ({
+        ...event,
+        organizer: {
+          id: event.organizerId,
+          firstName: "Event",
+          lastName: "Organizer", 
+          email: "organizer@eventconnect.com",
+          profileImageUrl: null,
+          aiSignature: null,
+          location: null,
+          username: null,
+          password: null,
+          oauthProvider: null,
+          oauthId: null,
+          customAvatarUrl: null,
+          animeAvatarSeed: "default",
+          interests: [],
+          personality: [],
+          skippedEvents: [],
+          eventsShownSinceSkip: 0,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        rsvpCount: 0,
+        userRsvpStatus: undefined
+      }))
+    );
+    
+    console.log(`✅ Middleware returning ${eventsWithOrganizer.length} events`);
+    res.json(eventsWithOrganizer);
+  } catch (error) {
+    console.error('❌ Middleware Events API error:', error);
+    res.status(500).json({ error: (error as Error).message });
+  }
+}
+
 const httpServer = createServer(app);
 
 // Setup routes and Vite in async function
 async function setupServer() {
+  // CRITICAL: Add API middleware that bypasses Vite catch-all
+  app.use('/api', (req, res, next) => {
+    console.log(`🎯 API middleware intercepted: ${req.method} ${req.url}`);
+    
+    // Handle events API directly in middleware
+    if (req.url === '/events' && req.method === 'GET') {
+      handleEventsAPI(req, res);
+      return;
+    }
+    
+    // Handle test API directly in middleware  
+    if (req.url === '/test' && req.method === 'GET') {
+      console.log('🧪 Test API called via middleware');
+      res.json({ 
+        message: "API working via middleware bypass", 
+        timestamp: new Date().toISOString(),
+        success: true
+      });
+      return;
+    }
+    
+    // For other API routes, continue to normal routing
+    next();
+  });
+
   // Register API routes BEFORE Vite setup
   await registerRoutes(app);
 
   // Setup Vite AFTER all custom routes are defined
   const server = await import("./vite");
   await server.setupVite(app, httpServer);
+  
+  // CRITICAL: Re-register essential API routes AFTER Vite to override catch-all
+  app.get('/api/events', async (req, res) => {
+    try {
+      console.log('🔥 Direct API events call received');
+      const dbEvents = await db.select().from(events).limit(20);
+      
+      const eventsWithOrganizer = await Promise.all(
+        dbEvents.map(async (event) => ({
+          ...event,
+          organizer: {
+            id: event.organizerId,
+            firstName: "Event",
+            lastName: "Organizer", 
+            email: "organizer@eventconnect.com",
+            profileImageUrl: null,
+            aiSignature: null,
+            location: null,
+            username: null,
+            password: null,
+            oauthProvider: null,
+            oauthId: null,
+            customAvatarUrl: null,
+            animeAvatarSeed: "default",
+            interests: [],
+            personality: [],
+            skippedEvents: [],
+            eventsShownSinceSkip: 0,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          },
+          rsvpCount: 0,
+          userRsvpStatus: undefined
+        }))
+      );
+      
+      console.log(`✅ Returning ${eventsWithOrganizer.length} events`);
+      res.json(eventsWithOrganizer);
+    } catch (error) {
+      console.error('❌ Events API error:', error);
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+  
+  app.get('/api/test', (req, res) => {
+    console.log('🧪 Test API called');
+    res.json({ 
+      message: "API working AFTER Vite setup", 
+      timestamp: new Date().toISOString(),
+      success: true
+    });
+  });
   
   return httpServer;
 }

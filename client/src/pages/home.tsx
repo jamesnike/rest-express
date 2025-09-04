@@ -115,8 +115,17 @@ export default function Home() {
     { id: 'reading', name: 'Reading', icon: Activity },
   ];
 
-  // Temporary workaround: Use working static events while API is being fixed
-  const events: EventWithOrganizer[] = [
+  // Trying API again after middleware fix
+  const { data: events, isLoading, error } = useQuery<EventWithOrganizer[]>({
+    queryKey: ["/api/events"],
+    retry: (failureCount, error) => {
+      // Only retry on network errors, not on 401s
+      return failureCount < 2 && !error.message.includes('401');
+    },
+  });
+
+  // Fallback to static events if API fails
+  const staticEvents: EventWithOrganizer[] = [
     {
       id: 1,
       title: "Live Jazz & Blues Night",
@@ -224,7 +233,13 @@ export default function Home() {
       userRsvpStatus: undefined
     }
   ];
-  const isLoading = false;
+
+  // Use static events as fallback when API fails
+  const finalEvents = events && events.length > 0 ? events : staticEvents;
+  
+  if (error) {
+    console.log('❌ API Error - using fallback events:', error);
+  }
 
   // Reset to Event Card view when page is refreshed (unless coming from other pages)
   useEffect(() => {
@@ -321,7 +336,7 @@ export default function Home() {
       const eventIndex = events.findIndex(e => e.id === eventId);
       
       if (eventIndex !== -1) {
-        const event = events[eventIndex];
+        const event = finalEvents[eventIndex];
         console.log('🏠 Home page - found event for EventContent:', event.title);
         
         // Set the event and show EventContent
@@ -355,7 +370,7 @@ export default function Home() {
       const eventIndex = events.findIndex(e => e.id === eventId);
       
       if (eventIndex !== -1) {
-        const event = events[eventIndex];
+        const event = finalEvents[eventIndex];
         // Show EventDetail for the selected event
         setSelectedEvent(event);
         setShowDetailCard(true);
@@ -377,7 +392,7 @@ export default function Home() {
       const eventIndex = events.findIndex(e => e.id === eventId);
       
       if (eventIndex !== -1) {
-        const event = events[eventIndex];
+        const event = finalEvents[eventIndex];
         // Show EventDetail modal for the selected event
         setSelectedEvent(event);
         setShowDetailCard(true);
@@ -401,7 +416,7 @@ export default function Home() {
       const eventIndex = events.findIndex(e => e.id === eventId);
       
       if (eventIndex !== -1) {
-        const event = events[eventIndex];
+        const event = finalEvents[eventIndex];
         handleEventNavigation(event, eventId, fromMyEvents, fromBrowse, fromMessagesTab, preferredTab);
       } else {
         // Event not found in home page events, fetch it separately
@@ -734,7 +749,7 @@ export default function Home() {
     saveHomeState(stateToSave);
   }, [currentEventIndex, swipedEvents, showDetailCard, showContentCard, lastActiveTab]);
 
-  const availableEvents = events?.filter(event => 
+  const availableEvents = finalEvents?.filter(event => 
     !swipedEvents.has(event.id) && 
     event.organizerId !== user?.id && 
     event.userRsvpStatus !== 'going' && 
@@ -784,7 +799,7 @@ export default function Home() {
 
   // Clear state when user has swiped through all events
   useEffect(() => {
-    if (events && events.length > 0 && availableEvents.length === 0 && swipedEvents.size > 0) {
+    if (finalEvents && finalEvents.length > 0 && availableEvents.length === 0 && swipedEvents.size > 0) {
       // User has swiped through all events, reset state
       setCurrentEventIndex(0);
       setSwipedEvents(new Set());
