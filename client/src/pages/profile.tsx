@@ -932,6 +932,10 @@ export default function Profile() {
                 title: "Signed Out",
                 description: "You have been successfully signed out.",
               });
+              // Force redirect to login page
+              setTimeout(() => {
+                window.location.href = '/';
+              }, 500);
             }}
             className="w-full text-left p-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
           >
