@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Edit, Bell, Shield, HelpCircle, Music, Activity, Palette, UtensilsCrossed, Laptop, Check, Sparkles, MapPin, Navigation } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useHybridAuth } from "@/hooks/useHybridAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
@@ -12,6 +13,7 @@ import { EventWithOrganizer } from "@shared/schema";
 
 export default function Profile() {
   const { user, isLoading, isAuthenticated } = useAuth();
+  const { logout } = useHybridAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showProfile, setShowProfile] = useState(false);
@@ -924,8 +926,14 @@ export default function Profile() {
         {/* Logout */}
         <div className="pt-4 border-t border-gray-200">
           <button 
-            onClick={() => window.location.href = '/api/logout'}
-            className="w-full text-left p-3 text-red-600 hover:bg-red-50 rounded-lg"
+            onClick={() => {
+              logout();
+              toast({
+                title: "Signed Out",
+                description: "You have been successfully signed out.",
+              });
+            }}
+            className="w-full text-left p-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
           >
             Sign Out
           </button>
