@@ -23,7 +23,7 @@ import {
   type RegisterRequest,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, or, ne, sql, desc, asc, gte, lte, between, gt, inArray } from "drizzle-orm";
+import { eq, and, or, ne, sql, desc, asc, gte, lte, between, gt, inArray, notInArray } from "drizzle-orm";
 
 // Interface for storage operations
 export interface IStorage {
@@ -289,7 +289,7 @@ export class DatabaseStorage implements IStorage {
     // Add skipped events exclusion if there are any
     if (userSkippedEvents.length > 0) {
       console.log(`Filtering out skipped events for user ${userId}:`, userSkippedEvents);
-      whereConditions.push(sql`${events.id} NOT IN (${sql.raw(userSkippedEvents.map(id => `${id}`).join(', '))})`);
+      whereConditions.push(notInArray(events.id, userSkippedEvents));
     } else {
       console.log(`No skipped events to filter for user ${userId}`);
     }
