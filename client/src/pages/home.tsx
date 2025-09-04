@@ -295,7 +295,7 @@ export default function Home() {
     
     // Handle EventDetail RSVP navigation to EventContent within Home page
     if (showEventContent === 'true' && forceEventId && events) {
-      console.log('🏠 Home page - handling EventDetail RSVP navigation to EventContent');
+      console.log('🏠 Home page - FOUND RSVP FLAGS! handling EventDetail RSVP navigation to EventContent');
       console.log('🏠 Home page - localStorage flags detected:', {
         showEventContent,
         eventContentTab,
@@ -398,7 +398,7 @@ export default function Home() {
     } catch (error) {
       console.error('🏠 Home localStorage useEffect error:', error);
     }
-  }, [events]);
+  }, [events, selectedEvent]);
 
   // Helper function to fetch a specific event when it's not in the home page events
   const fetchSpecificEvent = async (eventId: number, fromMyEvents: string | null, fromBrowse: string | null, fromMessagesTab: string | null, preferredTab: string | null) => {
@@ -1193,9 +1193,18 @@ export default function Home() {
         <EventDetail 
           event={selectedEvent} 
           onClose={() => {
+            console.log('🏠 Home - EventDetail onClose triggered');
+            console.log('🏠 Home - localStorage flags at close:', {
+              showEventContent: localStorage.getItem('showEventContent'),
+              forceEventId: localStorage.getItem('forceEventId'),
+              eventContentTab: localStorage.getItem('eventContentTab'),
+              fromHomeEventDetail: localStorage.getItem('fromHomeEventDetail'),
+              preventHomeAdvancement: localStorage.getItem('preventHomeAdvancement')
+            });
             setSelectedEvent(null);
             setIsFromMyEvents(false);
             setEventFromMyEvents(null);
+            console.log('🏠 Home - EventDetail closed, selectedEvent set to null');
           }} 
           onSkip={() => {
             // Skip to next event when not from My Events
