@@ -8,6 +8,7 @@ import Home from '@/pages/home';
 import Browse from '@/pages/browse';
 import Profile from '@/pages/profile';
 import MyEvents from '@/pages/my-events';
+import EventContentPage from '@/pages/event-content';
 
 function AppRouter() {
   return (
@@ -16,6 +17,7 @@ function AppRouter() {
       <Route path="/browse" component={Browse} />
       <Route path="/my-events" component={MyEvents} />
       <Route path="/profile" component={Profile} />
+      <Route path="/event-content/:eventId" component={EventContentPage} />
       <Route>
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
           <div className="text-center">
