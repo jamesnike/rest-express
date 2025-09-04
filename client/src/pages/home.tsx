@@ -52,6 +52,9 @@ export default function Home() {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
 
+  // Add error boundary logging
+  console.log('🏠 Home component rendering, user:', user?.id);
+
   // Initialize state - always start with Event Card page when refreshed
   const [showCreateEvent, setShowCreateEvent] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EventWithOrganizer | null>(null);
@@ -267,18 +270,28 @@ export default function Home() {
 
   // Check for event ID from localStorage (when navigating from other pages)
   useEffect(() => {
-    const eventContentId = localStorage.getItem('eventContentId');
-    const selectedEventId = localStorage.getItem('selectedEventId');
-    const showEventDetail = localStorage.getItem('showEventDetail');
-    const fromMyEvents = localStorage.getItem('fromMyEvents');
-    const fromBrowse = localStorage.getItem('fromBrowse');
-    const fromMessagesTab = localStorage.getItem('fromMessagesTab');
-    const fromEventContent = localStorage.getItem('fromEventContent');
-    const preferredTab = localStorage.getItem('preferredTab');
-    const reopenEventDetailId = localStorage.getItem('reopenEventDetailId');
-    const showEventContent = localStorage.getItem('showEventContent');
-    const eventContentTab = localStorage.getItem('eventContentTab');
-    const forceEventId = localStorage.getItem('forceEventId');
+    try {
+      console.log('🏠 Home localStorage useEffect triggered');
+      const eventContentId = localStorage.getItem('eventContentId');
+      const selectedEventId = localStorage.getItem('selectedEventId');
+      const showEventDetail = localStorage.getItem('showEventDetail');
+      const fromMyEvents = localStorage.getItem('fromMyEvents');
+      const fromBrowse = localStorage.getItem('fromBrowse');
+      const fromMessagesTab = localStorage.getItem('fromMessagesTab');
+      const fromEventContent = localStorage.getItem('fromEventContent');
+      const preferredTab = localStorage.getItem('preferredTab');
+      const reopenEventDetailId = localStorage.getItem('reopenEventDetailId');
+      const showEventContent = localStorage.getItem('showEventContent');
+      const eventContentTab = localStorage.getItem('eventContentTab');
+      const forceEventId = localStorage.getItem('forceEventId');
+      
+      console.log('🏠 Home localStorage flags:', {
+        showEventContent,
+        forceEventId,
+        eventContentTab,
+        eventsAvailable: !!events,
+        eventsLength: events?.length
+      });
     
     // Handle EventDetail RSVP navigation to EventContent within Home page
     if (showEventContent === 'true' && forceEventId && events) {
@@ -381,6 +394,9 @@ export default function Home() {
         // Event not found in home page events, fetch it separately
         fetchSpecificEvent(eventId, fromMyEvents, fromBrowse, fromMessagesTab, preferredTab);
       }
+    }
+    } catch (error) {
+      console.error('🏠 Home localStorage useEffect error:', error);
     }
   }, [events]);
 
