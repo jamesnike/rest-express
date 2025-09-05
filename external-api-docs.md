@@ -2,14 +2,14 @@
 
 ## Backend URL Access
 
-### Development Environment
-```
-https://ba3a646f-8137-44c9-b8da-3a42bf8c9d50-00-12thhwhpja8kw.kirk.replit.dev
-```
-
-### Production Environment (After Deployment)
+### Current Live Environment
 ```
 https://local-event-connect.replit.app
+```
+
+### Backup/Development URL
+```
+https://ba3a646f-8137-44c9-b8da-3a42bf8c9d50-00-12thhwhpja8kw.kirk.replit.dev
 ```
 
 ## Mobile App Configuration
@@ -17,7 +17,7 @@ https://local-event-connect.replit.app
 ### Base API Configuration
 ```javascript
 // Mobile app config
-const API_BASE_URL = 'https://ba3a646f-8137-44c9-b8da-3a42bf8c9d50-00-12thhwhpja8kw.kirk.replit.dev';
+const API_BASE_URL = 'https://local-event-connect.replit.app';
 
 // API Client setup with JWT authentication
 const apiClient = axios.create({
@@ -90,58 +90,69 @@ const logout = () => {
 ```
 
 ### Sample Real User Credentials for Testing
-Use these existing users from the database:
+Use any email for testing - the system will create or retrieve users automatically:
 
 ```javascript
-// Real existing users you can test with:
+// Test user examples:
 const testUsers = [
   {
-    email: 'external-1752201712140@eventconnect.app',
-    firstName: 'External',
-    lastName: 'Organizer'
+    email: 'test@example.com',
+    firstName: 'Test',
+    lastName: 'User'
   },
   {
-    email: 'external-1752201712425@eventconnect.app',
-    firstName: 'External',
-    lastName: 'Organizer'
+    email: 'demo@eventconnect.app',
+    firstName: 'Demo',
+    lastName: 'Account'
   }
 ];
 
 // Example login call:
 const loginResult = await login({
-  email: 'external-1752201712140@eventconnect.app',
-  firstName: 'External',
-  lastName: 'Organizer'
+  email: 'test@example.com',
+  firstName: 'Test',
+  lastName: 'User'
 });
+
+// The login endpoint will:
+// 1. Create a new user if email doesn't exist
+// 2. Return existing user if email exists
+// 3. Always generate a fresh JWT token
 ```
 
 ### Working cURL Examples for Testing
 ```bash
 # Login and get JWT token
-curl -X POST https://ba3a646f-8137-44c9-b8da-3a42bf8c9d50-00-12thhwhpja8kw.kirk.replit.dev/api/auth/login \
+curl -X POST https://local-event-connect.replit.app/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"external-1752201712140@eventconnect.app","firstName":"External","lastName":"Organizer"}'
 
 # Get user info (replace <token> with actual token from login response)
 curl -H "Authorization: Bearer <token>" \
-  https://ba3a646f-8137-44c9-b8da-3a42bf8c9d50-00-12thhwhpja8kw.kirk.replit.dev/api/auth/user
+  https://local-event-connect.replit.app/api/auth/user
 
 # Get events
 curl -H "Authorization: Bearer <token>" \
-  https://ba3a646f-8137-44c9-b8da-3a42bf8c9d50-00-12thhwhpja8kw.kirk.replit.dev/api/events
+  https://local-event-connect.replit.app/api/events
 
 # Get specific event
 curl -H "Authorization: Bearer <token>" \
-  https://ba3a646f-8137-44c9-b8da-3a42bf8c9d50-00-12thhwhpja8kw.kirk.replit.dev/api/events/1
+  https://local-event-connect.replit.app/api/events/1
 ```
 
 ## Important Notes for Mobile Development
 
 1. **Token Storage**: Use secure storage (AsyncStorage for React Native, KeyChain/Keystore for native apps)
 2. **Token Expiry**: JWT tokens expire in 7 days. Implement token refresh logic.
-3. **Network Handling**: The Replit URL may change if the environment restarts. Consider making the base URL configurable.
+3. **Network Handling**: The primary URL (https://local-event-connect.replit.app) is stable. Use the backup URL only if needed.
 4. **Error Handling**: Always handle 401 responses by clearing tokens and redirecting to login.
 5. **CORS**: The API supports CORS, but ensure your mobile app handles authentication headers properly.
+6. **Group Chats**: After RSVPing to an event, users automatically gain access to that event's group chat.
+7. **My Events Endpoints**: 
+   - Attending: `/api/users/{userId}/events?type=attending`
+   - Organized: `/api/users/{userId}/events?type=organized`
+   - Group Chats: `/api/users/{userId}/group-chats`
+   - Saved Events: `/api/saved-events`
 
 ## Key Mobile API Endpoints
 
@@ -158,9 +169,24 @@ const getEventDetails = async (eventId) => {
   return await apiClient.get(`/api/events/${eventId}`);
 };
 
-// RSVP to event
-const rsvpToEvent = async (eventId, status) => {
+// RSVP to event (status: 'attending', 'maybe', 'not_going')
+const rsvpToEvent = async (eventId, status = 'attending') => {
   return await apiClient.post(`/api/events/${eventId}/rsvp`, { status });
+};
+
+// Save/Like an event
+const saveEvent = async (eventId) => {
+  return await apiClient.post(`/api/events/${eventId}/save`);
+};
+
+// Remove saved event
+const unsaveEvent = async (eventId) => {
+  return await apiClient.delete(`/api/events/${eventId}/save`);
+};
+
+// Get saved events
+const getSavedEvents = async () => {
+  return await apiClient.get('/api/saved-events');
 };
 
 // Get event messages
@@ -198,9 +224,17 @@ const getRecommendedEvents = async () => {
 ### Real-time Features
 ```javascript
 // WebSocket connection for real-time updates
-const connectWebSocket = () => {
-  const wsUrl = API_BASE_URL.replace('https://', 'wss://');
+const connectWebSocket = (userId) => {
+  const wsUrl = API_BASE_URL.replace('https://', 'wss://') + '/ws';
   const socket = new WebSocket(wsUrl);
+  
+  socket.onopen = () => {
+    // Subscribe to notifications
+    socket.send(JSON.stringify({
+      type: 'subscribe_notifications',
+      userId: userId
+    }));
+  };
   
   socket.onmessage = (event) => {
     const data = JSON.parse(event.data);
@@ -244,7 +278,7 @@ apiClient.interceptors.response.use(
 
 ## Sample Data Available
 
-The backend currently has **57 comprehensive sample events** for August 2025:
+The backend currently has **348 active events** with rich data:
 
 - **8 Music Events**: Festivals, concerts, open mic nights
 - **10 Sports Events**: Tournaments, fitness classes, outdoor activities  
