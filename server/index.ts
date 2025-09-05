@@ -793,7 +793,7 @@ async function setupServer() {
         .where(
           and(
             eq(eventRsvps.userId, userId),
-            eq(eventRsvps.status, 'going'),
+            or(eq(eventRsvps.status, 'going'), eq(eventRsvps.status, 'attending')),
             eq(eventRsvps.hasLeftChat, false)
           )
         );
