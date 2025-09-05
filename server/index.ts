@@ -604,11 +604,15 @@ async function setupServer() {
     
     // Handle user events (organized and attending)
     if (req.url.match(/^\/users\/[^\/]+\/events/) && req.method === 'GET') {
+      console.log(`📌 User events endpoint called: ${req.url}`);
       const urlParts = req.url.split('?');
       const params = new URLSearchParams(urlParts[1] || '');
       const type = params.get('type');
       
+      console.log(`📌 Type: ${type}, UserId: ${userId}`);
+      
       if (!userId) {
+        console.log('⚠️ No userId available');
         return res.json([]);
       }
       
@@ -712,7 +716,10 @@ async function setupServer() {
     
     // Handle saved events endpoint
     if (req.url === '/saved-events' && req.method === 'GET') {
+      console.log(`📌 Saved events endpoint called for userId: ${userId}`);
+      
       if (!userId) {
+        console.log('⚠️ No userId available for saved events');
         return res.json([]);
       }
       
