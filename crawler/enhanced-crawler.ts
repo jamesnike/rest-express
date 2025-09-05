@@ -315,30 +315,41 @@ async function runEnhancedCrawler() {
       
       for (const event of events) {
         try {
+          // Prepare data in the format expected by the API
+          const eventPayload = {
+            title: event.title,
+            description: event.description || `Event: ${event.title}`,
+            category: event.category,
+            subCategory: 'General',
+            date: event.date,
+            time: event.time,
+            location: event.location,
+            price: event.price === 'Free' ? '0.00' : event.price?.replace(/[^\d.]/g, '') || '0.00',
+            isFree: event.price === 'Free' || event.price?.toLowerCase() === 'free',
+            eventImageUrl: event.imageUrl,
+            organizerEmail: 'events@eventconnect.local',
+            source: 'enhanced_crawler',
+            sourceUrl: event.sourceUrl
+          };
+          
+          console.log(`Submitting: ${event.title}`);
+          
           const response = await fetch('https://local-event-connect.replit.app/api/external/events', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'X-API-Key': 'eventconnect_external_api_key_2024'
+              'x-api-key': 'eventconnect_external_api_key_2024'
             },
-            body: JSON.stringify({
-              ...event,
-              address: event.location,
-              city: 'San Carlos',
-              state: 'CA',
-              zipCode: '94070',
-              subcategory: 'General',
-              capacity: 100,
-              requirementsAge: 'All ages',
-              organizerEmail: 'events@eventconnect.local',
-              source: 'enhanced_crawler'
-            })
+            body: JSON.stringify(eventPayload)
           });
           
           if (response.ok) {
-            console.log(`✅ Submitted: ${event.title}`);
+            const result = await response.json();
+            console.log(`✅ Submitted: ${event.title} (ID: ${result.eventId})`);
           } else {
+            const error = await response.text();
             console.log(`⚠️ Failed to submit: ${event.title}`);
+            console.log(`   Error: ${error}`);
           }
         } catch (error) {
           console.error(`Error submitting event: ${error}`);

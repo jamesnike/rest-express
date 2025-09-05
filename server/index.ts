@@ -431,6 +431,13 @@ async function setupServer() {
   app.use('/api', async (req, res, next) => {
     console.log(`🎯 API middleware intercepted: ${req.method} ${req.url}`);
     
+    // Pass crawler and external events to their handlers
+    if (req.url.startsWith('/crawler/') || req.url === '/external/events') {
+      console.log('📨 Passing to crawler/external handler');
+      next();
+      return;
+    }
+    
     // Extract JWT token and verify user
     const authHeader = req.headers.authorization;
     let userId: string | undefined;
@@ -849,17 +856,9 @@ async function setupServer() {
       return;
     }
     
-    // For other API routes that we haven't implemented yet, return empty response
-    console.log(`⚠️ Unhandled API route: ${req.method} ${req.url}`);
-    
-    // Return appropriate empty responses for common endpoints
-    if (req.method === 'GET') {
-      res.json([]);
-    } else {
-      res.status(404).json({ 
-        message: `API route not fully implemented: ${req.method} ${req.url}`
-      });
-    }
+    // Pass control to registered routes for paths we don't handle
+    // This allows routes.ts endpoints to work properly
+    next();
   });
 
   // Register API routes BEFORE Vite setup

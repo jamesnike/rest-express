@@ -107,9 +107,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // External API endpoint for web crawl - NO AUTHENTICATION REQUIRED
+  // External API endpoint for web crawl - API KEY REQUIRED
   app.post('/api/external/events', async (req, res) => {
     try {
+      // Check API key
+      const apiKey = req.headers['x-api-key'];
+      const expectedKey = process.env.EXTERNAL_API_KEY || 'eventconnect_external_api_key_2024';
+      
+      if (apiKey !== expectedKey) {
+        return res.status(401).json({ 
+          success: false, 
+          message: "Invalid or missing API key" 
+        });
+      }
+      
+      // Log incoming data for debugging
+      console.log('External event data received:', JSON.stringify(req.body, null, 2));
+      
       // Validate required fields using external event schema
       const eventData = externalEventSchema.omit({ organizerId: true }).parse(req.body);
       
@@ -140,6 +154,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
+        console.log("Zod validation error:", error.errors);
         return res.status(400).json({ 
           success: false,
           message: "Invalid event data", 
@@ -147,9 +162,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       console.error("Error creating external event:", error);
+      console.error("Full error details:", {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
       res.status(500).json({ 
         success: false,
-        message: "Failed to create event" 
+        message: error.message || "Failed to create event" 
       });
     }
   });

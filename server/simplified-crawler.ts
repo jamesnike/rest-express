@@ -1,7 +1,7 @@
 // Simplified crawler API for manual event submission
 import { Express } from 'express';
 import { db } from './db';
-import { events } from '@shared/schema';
+import { events, users } from '@shared/schema';
 import { eq, desc, and, gte } from 'drizzle-orm';
 import OpenAI from 'openai';
 import * as crypto from 'crypto';
@@ -14,6 +14,96 @@ const CRAWLER_API_KEY = process.env.CRAWLER_API_KEY || 'crawler_key_' + crypto.r
 export function setupSimplifiedCrawlerAPI(app: Express) {
   console.log('🤖 Crawler API initialized');
   console.log(`📝 Use this API key for event submission: ${CRAWLER_API_KEY}`);
+
+  // External events endpoint for automated web crawler
+  app.post('/api/external/events', async (req, res) => {
+    console.log('📥 External events endpoint called');
+    
+    try {
+      // Check API key
+      const apiKey = req.headers['x-api-key'];
+      const expectedKey = process.env.EXTERNAL_API_KEY || 'eventconnect_external_api_key_2024';
+      
+      if (apiKey !== expectedKey) {
+        console.log('❌ Invalid API key:', apiKey);
+        return res.status(401).json({ 
+          success: false, 
+          message: "Invalid or missing API key" 
+        });
+      }
+      
+      console.log('✅ API key valid');
+      console.log('External event data received:', JSON.stringify(req.body, null, 2));
+      
+      // Simple validation
+      if (!req.body.title || !req.body.description || !req.body.category || 
+          !req.body.date || !req.body.time || !req.body.location) {
+        return res.status(400).json({
+          success: false,
+          message: "Missing required fields",
+          required: ["title", "description", "category", "date", "time", "location"]
+        });
+      }
+      
+      // Find or create organizer
+      let organizerId: string;
+      const organizerEmail = req.body.organizerEmail || `external-${Date.now()}@eventconnect.app`;
+      
+      // Check if we have a default external organizer
+      const [existingOrganizer] = await db.select()
+        .from(users)
+        .where(eq(users.email, 'external-default@eventconnect.app'))
+        .limit(1);
+      
+      if (existingOrganizer) {
+        organizerId = existingOrganizer.id;
+      } else {
+        // Create a default external organizer
+        const [newOrganizer] = await db.insert(users)
+          .values({
+            id: `external_default_${Date.now()}`,
+            email: 'external-default@eventconnect.app',
+            firstName: 'External',
+            lastName: 'Event',
+            animeAvatarSeed: 'external_default',
+          })
+          .returning();
+        organizerId = newOrganizer.id;
+      }
+      
+      // Create the event
+      const [newEvent] = await db
+        .insert(events)
+        .values({
+          title: req.body.title,
+          description: req.body.description,
+          category: req.body.category,
+          subCategory: req.body.subCategory,
+          date: req.body.date,
+          time: req.body.time,
+          location: req.body.location,
+          organizerId,
+          price: req.body.price || "0.00",
+          isFree: req.body.isFree ?? true,
+          eventImageUrl: req.body.eventImageUrl,
+        })
+        .returning();
+        
+      console.log(`✅ External event created: ${newEvent.title} (ID: ${newEvent.id})`);
+      res.status(201).json({ 
+        success: true, 
+        eventId: newEvent.id,
+        message: "Event created successfully",
+        event: newEvent
+      });
+    } catch (error) {
+      console.error("Error creating external event:", error);
+      res.status(500).json({ 
+        success: false,
+        message: error.message || "Failed to create event" 
+      });
+    }
+  });
 
   // Endpoint to manually submit events
   app.post('/api/crawler/submit-event', async (req, res) => {
