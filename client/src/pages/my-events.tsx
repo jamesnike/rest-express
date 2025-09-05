@@ -175,7 +175,7 @@ export default function MyEvents() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/events"] });
       queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "events", "attending"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "events", "group-chats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "group-chats"] });
       toast({
         title: "Removed from attending",
         description: "You're no longer attending this event.",
@@ -206,7 +206,7 @@ export default function MyEvents() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "events", "organized"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "events", "group-chats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "group-chats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/events"] });
       toast({
         title: "Event Cancelled",

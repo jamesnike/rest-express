@@ -87,7 +87,7 @@ export default function EventDetail({ event, onClose, showGroupChatButton = fals
       queryClient.invalidateQueries({ queryKey: ["/api/events", event.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "events", "attending"] });
       queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "events", "organized"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "events", "group-chats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "group-chats"] });
       
       // Update local state for immediate UI feedback
       const wasAlreadyRsvped = localRsvpStatus === 'going' || localRsvpStatus === 'attending';
@@ -183,7 +183,7 @@ export default function EventDetail({ event, onClose, showGroupChatButton = fals
       queryClient.invalidateQueries({ queryKey: ["/api/events", event.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "events", "attending"] });
       queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "events", "organized"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "events", "group-chats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "group-chats"] });
       
       // Update local state for immediate UI feedback
       setLocalRsvpStatus(undefined);
@@ -226,7 +226,7 @@ export default function EventDetail({ event, onClose, showGroupChatButton = fals
       queryClient.invalidateQueries({ queryKey: ["/api/events/browse"] });
       queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "events", "attending"] });
       queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "events", "organized"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "events", "group-chats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "group-chats"] });
       
       toast({
         title: "Event Canceled",
