@@ -438,10 +438,13 @@ async function setupServer() {
         if (decoded) {
           userId = decoded.sub;
           (req as any).user = { claims: decoded };
+          console.log(`✅ JWT verified for user: ${userId}`);
         }
       } catch (error) {
-        console.log('⚠️ Invalid JWT token');
+        console.log('⚠️ Invalid JWT token:', error);
       }
+    } else {
+      console.log('⚠️ No Bearer token in request');
     }
     
     // Handle events API directly in middleware
