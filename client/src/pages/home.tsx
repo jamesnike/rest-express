@@ -52,9 +52,6 @@ export default function Home() {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
 
-  // Add error boundary logging
-  console.log('🏠 Home component rendering, user:', user?.id);
-
   // Initialize state - always start with Event Card page when refreshed
   const [showCreateEvent, setShowCreateEvent] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EventWithOrganizer | null>(null);
@@ -88,7 +85,7 @@ export default function Home() {
   const [lastSkipTime, setLastSkipTime] = useState(0);
   const [skipQueue, setSkipQueue] = useState<Set<number>>(new Set());
   const [eventBeingSkipped, setEventBeingSkipped] = useState<number | null>(null);
-  const [lastActiveTab, setLastActiveTab] = useState<'chat' | 'similar' | 'favorites'>(() => {
+  const [lastActiveTab, setLastActiveTab] = useState<'chat' | 'similar'>(() => {
     const saved = loadHomeState();
     return saved?.lastActiveTab || 'chat';
   });
@@ -115,131 +112,20 @@ export default function Home() {
     { id: 'reading', name: 'Reading', icon: Activity },
   ];
 
-  // Trying API again after middleware fix
-  const { data: events, isLoading, error } = useQuery<EventWithOrganizer[]>({
+  const { data: events, isLoading } = useQuery({
     queryKey: ["/api/events"],
-    retry: (failureCount, error) => {
-      // Only retry on network errors, not on 401s
-      return failureCount < 2 && !error.message.includes('401');
+    queryFn: async () => {
+      // For home page swipe interface, show all events for broader discovery
+      const response = await fetch("/api/events?limit=50");
+      return response.json() as Promise<EventWithOrganizer[]>;
     },
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+    refetchInterval: false,
+    staleTime: Infinity,
+    gcTime: Infinity,
   });
-
-  // Fallback to static events if API fails
-  const staticEvents: EventWithOrganizer[] = [
-    {
-      id: 1,
-      title: "Live Jazz & Blues Night",
-      description: "Experience soulful jazz and blues performances by local artists in an intimate setting. Perfect for music lovers!",
-      category: "Music",
-      subCategory: "Jazz",
-      date: "2025-09-05",
-      time: "19:30:00",
-      location: "Blue Note Lounge, 42 Music Ave",
-      latitude: "40.7589",
-      longitude: "-73.9851",
-      price: "15.00",
-      isFree: false,
-      eventImageUrl: null,
-      organizerId: "admin",
-      maxAttendees: 60,
-      capacity: 60,
-      parkingInfo: "Street parking available",
-      meetingPoint: "Main entrance",
-      duration: "3 hours",
-      whatToBring: "Just yourself!",
-      specialNotes: "Age 21+ only",
-      requirements: null,
-      contactInfo: "info@bluenotelounge.com",
-      cancellationPolicy: "Refund available up to 24h before event",
-      isActive: true,
-      isPrivateChat: false,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      organizer: {
-        id: "admin",
-        aiSignature: null,
-        location: null,
-        username: null,
-        email: "admin@eventconnect.com",
-        password: null,
-        oauthProvider: null,
-        oauthId: null,
-        firstName: "Event",
-        lastName: "Admin",
-        profileImageUrl: null,
-        customAvatarUrl: null,
-        animeAvatarSeed: "default",
-        interests: [],
-        personality: [],
-        skippedEvents: [],
-        eventsShownSinceSkip: 0,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      },
-      rsvpCount: 12,
-      userRsvpStatus: undefined
-    },
-    {
-      id: 2,
-      title: "Mobile App Development Workshop",
-      description: "Learn to build cross-platform mobile apps with React Native. Hands-on coding session with experienced developers.",
-      category: "Tech",
-      subCategory: "Development",
-      date: "2025-09-06",
-      time: "14:00:00",
-      location: "Tech Hub, 85 Innovation Drive",
-      latitude: "40.7505",
-      longitude: "-73.9934",
-      price: "45.00",
-      isFree: false,
-      eventImageUrl: null,
-      organizerId: "admin",
-      maxAttendees: 25,
-      capacity: 25,
-      parkingInfo: "Free parking garage",
-      meetingPoint: "Reception desk",
-      duration: "4 hours",
-      whatToBring: "Laptop with development setup",
-      specialNotes: "Intermediate level recommended",
-      requirements: "Basic JavaScript knowledge",
-      contactInfo: "workshop@techhub.com",
-      cancellationPolicy: "Full refund available",
-      isActive: true,
-      isPrivateChat: false,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      organizer: {
-        id: "admin",
-        aiSignature: null,
-        location: null,
-        username: null,
-        email: "tech@eventconnect.com",
-        password: null,
-        oauthProvider: null,
-        oauthId: null,
-        firstName: "Tech",
-        lastName: "Instructor",
-        profileImageUrl: null,
-        customAvatarUrl: null,
-        animeAvatarSeed: "default",
-        interests: [],
-        personality: [],
-        skippedEvents: [],
-        eventsShownSinceSkip: 0,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      },
-      rsvpCount: 8,
-      userRsvpStatus: undefined
-    }
-  ];
-
-  // Use static events as fallback when API fails
-  const finalEvents = events && events.length > 0 ? events : staticEvents;
-  
-  if (error) {
-    console.log('❌ API Error - using fallback events:', error);
-  }
 
   // Reset to Event Card view when page is refreshed (unless coming from other pages)
   useEffect(() => {
@@ -298,32 +184,22 @@ export default function Home() {
 
   // Check for event ID from localStorage (when navigating from other pages)
   useEffect(() => {
-    try {
-      console.log('🏠 Home localStorage useEffect triggered');
-      const eventContentId = localStorage.getItem('eventContentId');
-      const selectedEventId = localStorage.getItem('selectedEventId');
-      const showEventDetail = localStorage.getItem('showEventDetail');
-      const fromMyEvents = localStorage.getItem('fromMyEvents');
-      const fromBrowse = localStorage.getItem('fromBrowse');
-      const fromMessagesTab = localStorage.getItem('fromMessagesTab');
-      const fromEventContent = localStorage.getItem('fromEventContent');
-      const preferredTab = localStorage.getItem('preferredTab');
-      const reopenEventDetailId = localStorage.getItem('reopenEventDetailId');
-      const showEventContent = localStorage.getItem('showEventContent');
-      const eventContentTab = localStorage.getItem('eventContentTab');
-      const forceEventId = localStorage.getItem('forceEventId');
-      
-      console.log('🏠 Home localStorage flags:', {
-        showEventContent,
-        forceEventId,
-        eventContentTab,
-        eventsAvailable: !!events,
-        eventsLength: events?.length
-      });
+    const eventContentId = localStorage.getItem('eventContentId');
+    const selectedEventId = localStorage.getItem('selectedEventId');
+    const showEventDetail = localStorage.getItem('showEventDetail');
+    const fromMyEvents = localStorage.getItem('fromMyEvents');
+    const fromBrowse = localStorage.getItem('fromBrowse');
+    const fromMessagesTab = localStorage.getItem('fromMessagesTab');
+    const fromEventContent = localStorage.getItem('fromEventContent');
+    const preferredTab = localStorage.getItem('preferredTab');
+    const reopenEventDetailId = localStorage.getItem('reopenEventDetailId');
+    const showEventContent = localStorage.getItem('showEventContent');
+    const eventContentTab = localStorage.getItem('eventContentTab');
+    const forceEventId = localStorage.getItem('forceEventId');
     
     // Handle EventDetail RSVP navigation to EventContent within Home page
     if (showEventContent === 'true' && forceEventId && events) {
-      console.log('🏠 Home page - FOUND RSVP FLAGS! handling EventDetail RSVP navigation to EventContent');
+      console.log('🏠 Home page - handling EventDetail RSVP navigation to EventContent');
       console.log('🏠 Home page - localStorage flags detected:', {
         showEventContent,
         eventContentTab,
@@ -336,7 +212,7 @@ export default function Home() {
       const eventIndex = events.findIndex(e => e.id === eventId);
       
       if (eventIndex !== -1) {
-        const event = finalEvents[eventIndex];
+        const event = events[eventIndex];
         console.log('🏠 Home page - found event for EventContent:', event.title);
         
         // Set the event and show EventContent
@@ -350,14 +226,10 @@ export default function Home() {
           setLastActiveTab(eventContentTab as 'chat' | 'similar' | 'favorites');
         }
         
-        console.log('🏠 Home page - EventContent setup complete, state updated');
-        
         console.log('🏠 Home page - showing EventContent for event:', event.id);
         console.log('🏠 Home page - showContentCard set to true, showDetailCard set to false');
       } else {
         console.log('🏠 Home page - event not found in events array for EventContent');
-        console.log('🏠 Home page - Available event IDs:', events?.map(e => e.id));
-        console.log('🏠 Home page - Looking for event ID:', eventId);
       }
       
       // Clear localStorage flags
@@ -370,7 +242,7 @@ export default function Home() {
       const eventIndex = events.findIndex(e => e.id === eventId);
       
       if (eventIndex !== -1) {
-        const event = finalEvents[eventIndex];
+        const event = events[eventIndex];
         // Show EventDetail for the selected event
         setSelectedEvent(event);
         setShowDetailCard(true);
@@ -392,7 +264,7 @@ export default function Home() {
       const eventIndex = events.findIndex(e => e.id === eventId);
       
       if (eventIndex !== -1) {
-        const event = finalEvents[eventIndex];
+        const event = events[eventIndex];
         // Show EventDetail modal for the selected event
         setSelectedEvent(event);
         setShowDetailCard(true);
@@ -416,17 +288,14 @@ export default function Home() {
       const eventIndex = events.findIndex(e => e.id === eventId);
       
       if (eventIndex !== -1) {
-        const event = finalEvents[eventIndex];
+        const event = events[eventIndex];
         handleEventNavigation(event, eventId, fromMyEvents, fromBrowse, fromMessagesTab, preferredTab);
       } else {
         // Event not found in home page events, fetch it separately
         fetchSpecificEvent(eventId, fromMyEvents, fromBrowse, fromMessagesTab, preferredTab);
       }
     }
-    } catch (error) {
-      console.error('🏠 Home localStorage useEffect error:', error);
-    }
-  }, [events, selectedEvent]);
+  }, [events]);
 
   // Helper function to fetch a specific event when it's not in the home page events
   const fetchSpecificEvent = async (eventId: number, fromMyEvents: string | null, fromBrowse: string | null, fromMessagesTab: string | null, preferredTab: string | null) => {
@@ -749,7 +618,7 @@ export default function Home() {
     saveHomeState(stateToSave);
   }, [currentEventIndex, swipedEvents, showDetailCard, showContentCard, lastActiveTab]);
 
-  const availableEvents = finalEvents?.filter(event => 
+  const availableEvents = events?.filter(event => 
     !swipedEvents.has(event.id) && 
     event.organizerId !== user?.id && 
     event.userRsvpStatus !== 'going' && 
@@ -799,7 +668,7 @@ export default function Home() {
 
   // Clear state when user has swiped through all events
   useEffect(() => {
-    if (finalEvents && finalEvents.length > 0 && availableEvents.length === 0 && swipedEvents.size > 0) {
+    if (events && events.length > 0 && availableEvents.length === 0 && swipedEvents.size > 0) {
       // User has swiped through all events, reset state
       setCurrentEventIndex(0);
       setSwipedEvents(new Set());
@@ -820,8 +689,8 @@ export default function Home() {
     
     if (showContentCard) {
       // From content card, go back to main and move to next event
-      setSwipedEvents((prev: Set<number>) => new Set(prev).add(currentEvent.id));
-      setCurrentEventIndex((prev: number) => prev + 1);
+      setSwipedEvents(prev => new Set(prev).add(currentEvent.id));
+      setCurrentEventIndex(prev => prev + 1);
       
       // Increment events shown counter in database
       if (user) {
@@ -894,8 +763,8 @@ export default function Home() {
       
       // Add to local swiped events and move to next event
       startTransition(() => {
-        setSwipedEvents((prev: Set<number>) => new Set(prev).add(eventIdToSkip));
-        setCurrentEventIndex((prev: number) => prev + 1);
+        setSwipedEvents(prev => new Set(prev).add(eventIdToSkip));
+        setCurrentEventIndex(prev => prev + 1);
       });
     }
     
@@ -905,8 +774,8 @@ export default function Home() {
 
   const handleContentSwipeRight = async () => {
     // From content card, move to next event
-    setSwipedEvents((prev: Set<number>) => new Set(prev).add(currentEvent.id));
-    setCurrentEventIndex((prev: number) => prev + 1);
+    setSwipedEvents(prev => new Set(prev).add(currentEvent.id));
+    setCurrentEventIndex(prev => prev + 1);
     
     // Increment events shown counter in database
     if (user) {
@@ -989,7 +858,7 @@ export default function Home() {
         newSet.delete(lastSwipedEvent);
         return newSet;
       });
-      setCurrentEventIndex((prev: number) => Math.max(0, prev - 1));
+      setCurrentEventIndex(prev => Math.max(0, prev - 1));
     }
   };
 
@@ -1221,18 +1090,9 @@ export default function Home() {
         <EventDetail 
           event={selectedEvent} 
           onClose={() => {
-            console.log('🏠 Home - EventDetail onClose triggered');
-            console.log('🏠 Home - localStorage flags at close:', {
-              showEventContent: localStorage.getItem('showEventContent'),
-              forceEventId: localStorage.getItem('forceEventId'),
-              eventContentTab: localStorage.getItem('eventContentTab'),
-              fromHomeEventDetail: localStorage.getItem('fromHomeEventDetail'),
-              preventHomeAdvancement: localStorage.getItem('preventHomeAdvancement')
-            });
             setSelectedEvent(null);
             setIsFromMyEvents(false);
             setEventFromMyEvents(null);
-            console.log('🏠 Home - EventDetail closed, selectedEvent set to null');
           }} 
           onSkip={() => {
             // Skip to next event when not from My Events

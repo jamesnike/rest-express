@@ -91,7 +91,7 @@ export default function CreateEvent({ onClose }: CreateEventProps) {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/events"] });
       queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "events", "organized"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "group-chats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "events", "group-chats"] });
       handleClose();
     },
     onError: (error) => {

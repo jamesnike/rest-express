@@ -1,85 +1,102 @@
-import { useState } from 'react';
-import { Switch, Route } from 'wouter';
-import { useHybridAuth } from '@/hooks/useHybridAuth';
-import { HybridLoginForm } from '@/components/auth/HybridLoginForm';
-import { useToast } from '@/hooks/use-toast';
-import { Toaster } from '@/components/ui/toaster';
-import Home from '@/pages/home';
-import Browse from '@/pages/browse';
-import Profile from '@/pages/profile';
-import MyEvents from '@/pages/my-events';
-import EventContentPage from '@/pages/event-content';
+import { Switch, Route } from "wouter";
+import { Calendar } from "lucide-react";
+import { queryClient } from "./lib/queryClient";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { useAuth } from "@/hooks/useAuth";
+import NotFound from "@/pages/not-found";
+import Landing from "@/pages/landing";
+import Home from "@/pages/home";
+import Profile from "@/pages/profile";
+import MyEvents from "@/pages/my-events";
+import Browse from "@/pages/browse";
+import EventContentPage from "@/pages/event-content";
+import CustomerService from "@/pages/customer-service";
 
-function AppRouter() {
-  console.log('🔀 AppRouter - Current path:', window.location.pathname);
-  
-  return (
-    <Switch>
-      <Route path="/" component={Home} />
-      <Route path="/browse" component={Browse} />
-      <Route path="/my-events" component={MyEvents} />
-      <Route path="/profile" component={Profile} />
-      <Route path="/event-content/:eventId" component={EventContentPage} />
-      <Route>
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Page Not Found</h1>
-            <p className="text-gray-600">The page you're looking for doesn't exist.</p>
-            <p className="text-sm text-gray-500 mt-2">Current path: {window.location.pathname}</p>
-          </div>
-        </div>
-      </Route>
-    </Switch>
-  );
-}
+function Router() {
+  const { isAuthenticated, isLoading, user, error, refetch } = useAuth();
 
-export default function App() {
-  const { user, isAuthenticated, isLoading, login, logout } = useHybridAuth();
-  const { toast } = useToast();
+  // Debug authentication state in development
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Router state:', { isAuthenticated, isLoading, user: !!user, error, url: window.location.href });
+  }
 
-  const handleAuthSuccess = (token: string, user: any) => {
-    console.log('🔐 Auth success - setting auth state and redirecting to home');
-    login(token, user);
-    
-    // Ensure we're on the home page after successful authentication
-    if (window.location.pathname !== '/') {
-      console.log('🔐 Auth success - redirecting to home page from:', window.location.pathname);
-      window.history.pushState({}, '', '/');
-    }
-    
-    toast({
-      title: "Welcome!",
-      description: `Successfully signed in as ${user.firstName}`,
-    });
-  };
+  // Force authentication check on page load if coming from auth callback
+  if (typeof window !== 'undefined' && window.location.search.includes('code=')) {
+    setTimeout(() => {
+      refetch();
+    }, 500);
+  }
 
-  const handleAuthError = (error: string) => {
-    toast({
-      title: "Authentication Error",
-      description: error,
-      variant: "destructive",
-    });
-  };
-
+  // Show loading state while checking authentication or if user state is transitioning
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600">
-        <div className="text-white text-center">
-          <div className="animate-spin h-8 w-8 border-4 border-white border-t-transparent rounded-full mx-auto mb-4"></div>
-          <div>Loading...</div>
+      <div className="max-w-sm mx-auto bg-gradient-to-br from-primary to-accent min-h-screen flex items-center justify-center">
+        <div className="text-center text-white">
+          <div className="mb-8">
+            <Calendar className="w-16 h-16 mx-auto mb-4" />
+            <h1 className="text-3xl font-bold mb-2">EventConnect</h1>
+            <p className="text-lg opacity-90">Discover amazing events near you</p>
+          </div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto"></div>
         </div>
       </div>
     );
   }
 
+  // Render authenticated routes
+  if (isAuthenticated && user) {
+    return (
+      <Switch>
+        <Route path="/" component={Home} />
+        <Route path="/profile" component={Profile} />
+        <Route path="/my-events" component={MyEvents} />
+        <Route path="/browse" component={Browse} />
+        <Route path="/event/:eventId" component={EventContentPage} />
+        <Route path="/event-content/:eventId" component={EventContentPage} />
+        <Route path="/customer-service/:eventId" component={CustomerService} />
+        <Route path="*" component={NotFound} />
+      </Switch>
+    );
+  }
+
+  // Render unauthenticated routes
   return (
-    <>
-      {isAuthenticated ? (
-        <AppRouter />
-      ) : (
-        <HybridLoginForm onSuccess={handleAuthSuccess} onError={handleAuthError} />
-      )}
-      <Toaster />
-    </>
+    <Switch>
+      <Route path="/" component={Landing} />
+      <Route path="/profile">
+        {() => {
+          window.location.href = '/api/login';
+          return null;
+        }}
+      </Route>
+      <Route path="/my-events">
+        {() => {
+          window.location.href = '/api/login';
+          return null;
+        }}
+      </Route>
+      <Route path="/browse">
+        {() => {
+          window.location.href = '/api/login';
+          return null;
+        }}
+      </Route>
+      <Route path="*" component={NotFound} />
+    </Switch>
   );
 }
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Router />
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+}
+
+export default App;

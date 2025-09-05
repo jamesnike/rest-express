@@ -99,7 +99,7 @@ export function useWebSocket(eventId: number | null) {
             // Invalidate queries to refresh UI and notifications
             queryClient.invalidateQueries({ queryKey: ['/api/events', eventId, 'messages'] });
             queryClient.invalidateQueries({ queryKey: ['/api/notifications/unread'] });
-            queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "group-chats"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "events", "group-chats"] });
           } else {
             console.log('Ignoring message for different event:', data.eventId, 'current:', currentEventId.current);
           }

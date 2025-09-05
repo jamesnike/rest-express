@@ -28,7 +28,7 @@ const config: CapacitorConfig = {
     },
     Haptics: {},
     App: {
-      launchUrl: "https://ba3a646f-8137-44c9-b8da-3a42bf8c9d50-00-12thhwhpja8kw.kirk.replit.dev"
+      launchUrl: "https://your-domain.com" // Replace with your actual domain
     },
     PushNotifications: {
       presentationOptions: ["badge", "sound", "alert"]

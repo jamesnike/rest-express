@@ -1,118 +1,112 @@
-import { useState } from "react";
-import { Calendar, MapPin, Users, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import LoginForm from "@/components/LoginForm";
+import { useEffect, useState } from "react";
+import { Calendar, Users, MapPin, Star } from "lucide-react";
 
 export default function Landing() {
-  const [showLoginForm, setShowLoginForm] = useState(false);
-  const [isRegisterMode, setIsRegisterMode] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
 
-  const handleGetStarted = () => {
-    setShowLoginForm(true);
-    setIsRegisterMode(true); // Start with registration for new users
-  };
+  useEffect(() => {
+    // Debug logging for mobile troubleshooting
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Landing page loaded, showing login in 2 seconds');
+    }
+    
+    const timer = setTimeout(() => {
+      setShowLogin(true);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Login button now visible');
+      }
+    }, 2000);
 
-  const toggleMode = () => {
-    setIsRegisterMode(!isRegisterMode);
-  };
+    return () => clearTimeout(timer);
+  }, []);
 
-  if (showLoginForm) {
+  if (!showLogin) {
     return (
-      <div className="max-w-sm mx-auto bg-gradient-to-br from-primary to-accent min-h-screen">
-        <div className="text-white text-center px-6 pt-8 pb-6">
-          <Calendar className="w-12 h-12 mx-auto mb-3" />
-          <h1 className="text-2xl font-bold">EventConnect</h1>
-          <p className="text-sm opacity-90 mt-2">
-            {isRegisterMode ? "Create your account to get started" : "Welcome back to EventConnect"}
-          </p>
-        </div>
-        
-        <div className="px-6 pb-8">
-          <LoginForm 
-            onToggleMode={toggleMode}
-            isRegisterMode={isRegisterMode}
-          />
-          
-          <div className="mt-6 text-center">
-            <Button 
-              variant="link"
-              onClick={() => setShowLoginForm(false)}
-              className="text-white/80 text-sm hover:text-white"
-            >
-              ← Back to main page
-            </Button>
+      <div className="max-w-sm mx-auto bg-gradient-to-br from-primary to-accent min-h-screen flex items-center justify-center">
+        <div className="text-center text-white">
+          <div className="mb-8">
+            <Calendar className="w-16 h-16 mx-auto mb-4" />
+            <h1 className="text-3xl font-bold mb-2">EventConnect</h1>
+            <p className="text-lg opacity-90">Discover amazing events near you</p>
           </div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto"></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-sm mx-auto bg-gradient-to-br from-primary to-accent min-h-screen">
-      {/* Hero Section */}
-      <div className="text-white text-center px-6 pt-16 pb-8">
-        <div className="mb-8">
-          <Calendar className="w-20 h-20 mx-auto mb-6" />
-          <h1 className="text-4xl font-bold mb-4">EventConnect</h1>
-          <p className="text-lg opacity-90 leading-relaxed">
-            Discover amazing events and connect with people who share your interests
-          </p>
-        </div>
+    <div className="max-w-sm mx-auto bg-white min-h-screen flex flex-col justify-center p-6">
+      <div className="text-center mb-8">
+        <Calendar className="w-16 h-16 text-primary mx-auto mb-4" />
+        <h2 className="text-2xl font-bold text-gray-800 mb-2">Welcome to EventConnect!</h2>
+        <p className="text-gray-600">Sign in to discover events in your area</p>
       </div>
-
-      {/* Features */}
-      <div className="px-6 py-8 space-y-6">
-        <div className="flex items-start space-x-4 text-white">
-          <MapPin className="w-6 h-6 mt-1 flex-shrink-0" />
+      
+      <div className="space-y-6 mb-8">
+        <div className="flex items-center space-x-4">
+          <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+            <MapPin className="w-6 h-6 text-blue-600" />
+          </div>
           <div>
-            <h3 className="font-semibold mb-1">Local Events</h3>
-            <p className="text-sm opacity-90">Find exciting events happening right in your neighborhood</p>
+            <h3 className="font-semibold text-gray-800">Find Local Events</h3>
+            <p className="text-sm text-gray-600">Discover events happening near you</p>
           </div>
         </div>
-
-        <div className="flex items-start space-x-4 text-white">
-          <Users className="w-6 h-6 mt-1 flex-shrink-0" />
-          <div>
-            <h3 className="font-semibold mb-1">Meet People</h3>
-            <p className="text-sm opacity-90">Connect with like-minded individuals and make new friends</p>
-          </div>
-        </div>
-
-        <div className="flex items-start space-x-4 text-white">
-          <Sparkles className="w-6 h-6 mt-1 flex-shrink-0" />
-          <div>
-            <h3 className="font-semibold mb-1">Tailored for You</h3>
-            <p className="text-sm opacity-90">Discover events that match your interests and schedule</p>
-          </div>
-        </div>
-      </div>
-
-      {/* CTA Section */}
-      <div className="px-6 pb-8 space-y-3">
-        <Button 
-          onClick={handleGetStarted}
-          size="lg" 
-          className="w-full bg-white text-primary hover:bg-gray-100 font-semibold py-4 text-lg"
-        >
-          Create Account
-        </Button>
         
-        <Button 
-          onClick={() => {
-            setShowLoginForm(true);
-            setIsRegisterMode(false);
-          }}
-          variant="outline"
-          size="lg" 
-          className="w-full border-white text-white hover:bg-white hover:text-primary font-semibold py-4 text-lg"
-        >
-          Sign In
-        </Button>
+        <div className="flex items-center space-x-4">
+          <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+            <Users className="w-6 h-6 text-green-600" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-gray-800">Connect with People</h3>
+            <p className="text-sm text-gray-600">Meet like-minded individuals</p>
+          </div>
+        </div>
         
-        <p className="text-center text-white/80 text-sm mt-4">
-          Join thousands of people discovering amazing events
-        </p>
+        <div className="flex items-center space-x-4">
+          <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+            <Star className="w-6 h-6 text-purple-600" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-gray-800">Create Events</h3>
+            <p className="text-sm text-gray-600">Host your own amazing events</p>
+          </div>
+        </div>
       </div>
+      
+      <button 
+        onClick={() => {
+          if (process.env.NODE_ENV === 'development') {
+            console.log('Get Started button clicked, creating demo login');
+          }
+          // For demo purposes, use a predefined user
+          fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: 'demo@eventconnect.app',
+              firstName: 'Demo',
+              lastName: 'User'
+            })
+          })
+          .then(res => res.json())
+          .then(data => {
+            if (data.token) {
+              localStorage.setItem('auth_token', data.token);
+              window.location.href = '/';
+            }
+          })
+          .catch(err => console.error('Login failed:', err));
+        }}
+        className="w-full bg-primary text-white rounded-lg p-4 font-medium mb-4 hover:bg-primary/90 transition-colors"
+      >
+        Get Started
+      </button>
+      
+      <p className="text-center text-sm text-gray-600">
+        By continuing, you agree to our Terms of Service and Privacy Policy
+      </p>
     </div>
   );
 }

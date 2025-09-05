@@ -1,15 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { getQueryFn } from "@/lib/queryClient";
-import { User } from "@shared/schema";
 
 export function useAuth() {
-  // Check if we have a token first
-  const hasToken = typeof window !== 'undefined' ? !!localStorage.getItem('auth_token') : false;
-  
-  const { data: user, isLoading, error, refetch } = useQuery<User>({
+  const { data: user, isLoading, error, refetch } = useQuery({
     queryKey: ["/api/auth/user"],
     queryFn: getQueryFn({ on401: "returnNull" }),
-    enabled: hasToken, // Only run query if we have a token
     retry: (failureCount, error) => {
       // Only retry on network errors, not on 401s
       return failureCount < 2 && !error.message.includes('401');
@@ -19,7 +14,7 @@ export function useAuth() {
     refetchOnWindowFocus: true, // Enable refetch on window focus
     refetchOnMount: true, // Enable refetch on mount
     refetchOnReconnect: true, // Enable refetch on reconnect
-    refetchInterval: false, // Disable auto refetch for now
+    refetchInterval: 10 * 1000, // Refetch every 10 seconds to maintain auth state
   });
 
   // Debug auth state in development
@@ -43,7 +38,7 @@ export function useAuth() {
 
   return {
     user,
-    isLoading: hasToken ? isLoading : false, // If no token, don't show loading
+    isLoading,
     isAuthenticated: !!user,
     error,
     refetch,

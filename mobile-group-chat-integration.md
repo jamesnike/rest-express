@@ -7,8 +7,8 @@ This document provides step-by-step instructions for integrating your mobile app
 ### Base API URL
 ```
 Primary: https://local-event-connect.replit.app
-WebSocket: wss://local-event-connect.replit.app/ws
 Fallback: https://ba3a646f-8137-44c9-b8da-3a42bf8c9d50-00-12thhwhpja8kw.kirk.replit.dev
+WebSocket: wss://ba3a646f-8137-44c9-b8da-3a42bf8c9d50-00-12thhwhpja8kw.kirk.replit.dev/ws
 ```
 
 ### Authentication
@@ -20,7 +20,7 @@ All chat endpoints require JWT authentication via Bearer token in the Authorizat
 ```typescript
 import axios from 'axios';
 
-const API_BASE_URL = 'https://local-event-connect.replit.app';
+const API_BASE_URL = 'https://ba3a646f-8137-44c9-b8da-3a42bf8c9d50-00-12thhwhpja8kw.kirk.replit.dev';
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -68,7 +68,7 @@ class ChatWebSocket {
   }
   
   private connect() {
-    const wsUrl = 'wss://local-event-connect.replit.app/ws';
+    const wsUrl = 'wss://ba3a646f-8137-44c9-b8da-3a42bf8c9d50-00-12thhwhpja8kw.kirk.replit.dev/ws';
     this.ws = new WebSocket(wsUrl);
     
     this.ws.onopen = () => {
@@ -162,9 +162,6 @@ interface Chat {
   isPrivateChat: boolean;
   organizerId: string;
   lastMessageTime?: string;
-  rsvpCount: number;
-  date: string;
-  time: string;
   // ... other event fields
 }
 
@@ -177,11 +174,6 @@ const getChatList = async (userId: string): Promise<Chat[]> => {
     throw error;
   }
 };
-
-// Note: Group chats are automatically available for:
-// 1. Events you've RSVP'd to with status 'attending' or 'going'
-// 2. Events you've organized
-// 3. Private chats you've joined
 ```
 
 ### 2.2 Chat List UI Component
@@ -530,32 +522,28 @@ const getCachedMessages = async (chatId: number): Promise<ChatMessage[]> => {
 ## Testing & Validation
 
 ### Test User Accounts
-Any email can be used for testing - the system automatically creates or retrieves users:
-- `test@example.com`
-- `demo@eventconnect.app`
-- Or use any email - users are created automatically on first login
+Use these existing accounts for testing:
+- `external-1752201712140@eventconnect.app`
+- `external-1752201712425@eventconnect.app`
 
 ### Test Scenarios
 1. **Login & Get Chats**: Verify JWT authentication and chat list retrieval
-2. **RSVP to Event**: After RSVPing, verify the event appears in group chats
-3. **Send Messages**: Test message sending and real-time updates
-4. **Private Chat Creation**: Create 1-on-1 chats between test users
-5. **WebSocket Connectivity**: Test real-time message delivery
-6. **Offline Support**: Test app behavior when network is unavailable
-7. **Error Recovery**: Test reconnection and error handling
-8. **Save/Unsave Events**: Test event saving functionality
-9. **My Events Tabs**: Test fetching attending, organized, and saved events
+2. **Send Messages**: Test message sending and real-time updates
+3. **Private Chat Creation**: Create 1-on-1 chats between test users
+4. **WebSocket Connectivity**: Test real-time message delivery
+5. **Offline Support**: Test app behavior when network is unavailable
+6. **Error Recovery**: Test reconnection and error handling
 
 ### cURL Testing Examples
 ```bash
 # Login to get JWT token
-curl -X POST https://local-event-connect.replit.app/api/auth/login \
+curl -X POST https://ba3a646f-8137-44c9-b8da-3a42bf8c9d50-00-12thhwhpja8kw.kirk.replit.dev/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"external-1752201712140@eventconnect.app","firstName":"External","lastName":"Organizer"}'
 
 # Get user's chats (replace <token> with actual token)
 curl -H "Authorization: Bearer <token>" \
-  https://local-event-connect.replit.app/api/users/<userId>/group-chats
+  https://ba3a646f-8137-44c9-b8da-3a42bf8c9d50-00-12thhwhpja8kw.kirk.replit.dev/api/users/<userId>/group-chats
 
 # Send a message
 curl -X POST -H "Authorization: Bearer <token>" \

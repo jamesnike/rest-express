@@ -87,7 +87,7 @@ export default function EventDetail({ event, onClose, showGroupChatButton = fals
       queryClient.invalidateQueries({ queryKey: ["/api/events", event.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "events", "attending"] });
       queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "events", "organized"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "group-chats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "events", "group-chats"] });
       
       // Update local state for immediate UI feedback
       const wasAlreadyRsvped = localRsvpStatus === 'going' || localRsvpStatus === 'attending';
@@ -183,7 +183,7 @@ export default function EventDetail({ event, onClose, showGroupChatButton = fals
       queryClient.invalidateQueries({ queryKey: ["/api/events", event.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "events", "attending"] });
       queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "events", "organized"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "group-chats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "events", "group-chats"] });
       
       // Update local state for immediate UI feedback
       setLocalRsvpStatus(undefined);
@@ -226,7 +226,7 @@ export default function EventDetail({ event, onClose, showGroupChatButton = fals
       queryClient.invalidateQueries({ queryKey: ["/api/events/browse"] });
       queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "events", "attending"] });
       queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "events", "organized"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "group-chats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "events", "group-chats"] });
       
       toast({
         title: "Event Canceled",
@@ -699,7 +699,7 @@ export default function EventDetail({ event, onClose, showGroupChatButton = fals
             <div className="flex items-center space-x-3">
               <div className="flex -space-x-2">
                 {/* Show attendees (organizer already included in backend) */}
-                {attendees.slice(0, 10).map((attendee: any, index: number) => (
+                {attendees.slice(0, 10).map((attendee, index) => (
                   <AnimeAvatar 
                     key={attendee.id}
                     seed={attendee.animeAvatarSeed} 
