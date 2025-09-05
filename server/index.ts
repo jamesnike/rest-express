@@ -510,7 +510,9 @@ async function setupServer() {
         ).limit(1);
         
         if (existing.length > 0) {
-          return res.status(400).json({ message: "Event already saved" });
+          // Already saved, just return success (idempotent)
+          console.log(`ℹ️ Event ${eventId} already saved for user ${userId}`);
+          return res.status(200).json({ message: "Event already saved" });
         }
         
         // Save the event
@@ -615,26 +617,24 @@ async function setupServer() {
           // Get events user RSVP'd to (including 'attending' status)
           console.log(`🔍 Fetching attending events for user: ${userId}`);
           
+          // Simpler query without or() operator
           const rsvpEvents = await db.select({
             event: events,
             rsvpStatus: eventRsvps.status
           })
           .from(eventRsvps)
           .innerJoin(events, eq(eventRsvps.eventId, events.id))
-          .where(
-            and(
-              eq(eventRsvps.userId, userId),
-              or(
-                eq(eventRsvps.status, 'going'),
-                eq(eventRsvps.status, 'attending')
-              )
-            )
+          .where(eq(eventRsvps.userId, userId));
+          
+          // Filter for going/attending status in code
+          const filteredEvents = rsvpEvents.filter(r => 
+            r.rsvpStatus === 'going' || r.rsvpStatus === 'attending'
           );
           
-          console.log(`📊 Found ${rsvpEvents.length} RSVP events for user ${userId}`);
+          console.log(`📊 Found ${filteredEvents.length} RSVP events for user ${userId}`);
           
           // Transform to match EventWithOrganizer structure
-          const eventsWithOrganizer = rsvpEvents.map(({ event, rsvpStatus }) => ({
+          const eventsWithOrganizer = filteredEvents.map(({ event, rsvpStatus }) => ({
             ...event,
             organizer: {
               id: event.organizerId,
