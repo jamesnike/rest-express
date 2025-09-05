@@ -8,9 +8,80 @@ import { db } from "./db";
 import { events, users, eventRsvps, savedEvents } from "@shared/schema";
 import { and, eq, or } from "drizzle-orm";
 import { setupSimplifiedCrawlerAPI } from "./simplified-crawler";
+import { setupExternalEventsAPI } from "./external-events-api";
 
 const app = express();
-app.use(express.json());
+
+// Add error handling for body parsing
+app.use((req, res, next) => {
+  if (req.method === 'POST' && req.url.startsWith('/api/')) {
+    console.log(`📥 Incoming POST request to: ${req.url}`);
+    console.log(`   Content-Type: ${req.headers['content-type']}`);
+    console.log(`   Body exists: ${!!req.body}`);
+  }
+  next();
+});
+
+app.use(express.json({
+  verify: (req, res, buf, encoding) => {
+    console.log(`🔍 Body parser processing: ${req.method} ${req.url}`);
+  }
+}));
+
+// Setup external events API FIRST, before any other middleware
+setupExternalEventsAPI(app);
+
+// Add external events endpoint at root level before any middleware
+app.post('/external-events-submit', async (req, res) => {
+  console.log('📮 External events endpoint called at root level');
+  
+  // Check API key
+  const apiKey = req.headers['x-api-key'] || req.headers['x-crawler-api-key'];
+  const validKey = process.env.EXTERNAL_API_KEY || 'eventconnect_external_api_key_2024';
+  
+  if (!apiKey || apiKey !== validKey) {
+    console.log('❌ Invalid API key for external events');
+    return res.status(403).json({ error: 'Invalid or missing API key' });
+  }
+  
+  try {
+    console.log('📦 Processing external event:', req.body);
+    const eventData = req.body;
+    
+    // Create the event using storage
+    const event = await storage.createExternalEvent(eventData);
+    console.log('✅ External event created successfully:', event.id);
+    
+    res.json({ 
+      success: true, 
+      eventId: event.id,
+      message: 'Event created successfully'
+    });
+  } catch (error) {
+    console.error('❌ External event creation failed:', error);
+    res.status(500).json({ 
+      error: 'Failed to create event', 
+      details: (error as Error).message 
+    });
+  }
+});
+
+// Add test routes WITHOUT /api prefix to verify routing works
+app.get('/external-test', (req, res) => {
+  console.log('EXTERNAL-TEST route called (no /api prefix)!');
+  res.json({ message: 'External test works!', timestamp: Date.now() });
+});
+
+// Also try with /api prefix
+app.get('/api/test-simple', (req, res) => {
+  console.log('TEST-SIMPLE route called!');
+  res.json({ message: 'Simple test works!', timestamp: Date.now() });
+});
+
+app.post('/api/test-post', (req, res) => {
+  console.log('TEST-POST route called with body:', req.body);
+  res.json({ message: 'Post test works!', received: req.body });
+});
 
 // Force production-like environment to avoid dev tooling injection
 process.env.NODE_ENV = 'production';
@@ -190,6 +261,48 @@ app.post('/api/auth/oauth', async (req, res) => {
   } catch (error) {
     console.error('OAuth login error:', error);
     res.status(500).json({ message: 'OAuth login failed: ' + (error as Error).message });
+  }
+});
+
+// Simple test POST endpoint
+app.post('/api/test-post-endpoint', (req, res) => {
+  console.log('🧪 Test POST endpoint called!');
+  console.log('Body:', req.body);
+  res.json({ success: true, message: 'Test POST works!', received: req.body });
+});
+
+// External events endpoint - must be defined before setupServer()
+app.post('/api/external/events', async (req, res) => {
+  console.log('📮 External events endpoint called (before setupServer)');
+  
+  // Check API key
+  const apiKey = req.headers['x-api-key'] || req.headers['x-crawler-api-key'];
+  const validKey = process.env.EXTERNAL_API_KEY || 'eventconnect_external_api_key_2024';
+  
+  if (!apiKey || apiKey !== validKey) {
+    console.log('❌ Invalid API key for external events');
+    return res.status(403).json({ error: 'Invalid or missing API key' });
+  }
+  
+  try {
+    console.log('📦 Processing external event:', req.body);
+    const eventData = req.body;
+    
+    // Create the event using storage
+    const event = await storage.createExternalEvent(eventData);
+    console.log('✅ External event created successfully:', event.id);
+    
+    res.json({ 
+      success: true, 
+      eventId: event.id,
+      message: 'Event created successfully'
+    });
+  } catch (error) {
+    console.error('❌ External event creation failed:', error);
+    res.status(500).json({ 
+      error: 'Failed to create event', 
+      details: (error as Error).message 
+    });
   }
 });
 
@@ -424,16 +537,103 @@ const httpServer = createServer(app);
 
 // Setup routes and Vite in async function
 async function setupServer() {
-  // Setup simplified crawler API endpoints FIRST (before the general API middleware)
+  // Setup simplified crawler API endpoints
   setupSimplifiedCrawlerAPI(app);
   
   // CRITICAL: Add API middleware that bypasses Vite catch-all
   app.use('/api', async (req, res, next) => {
     console.log(`🎯 API middleware intercepted: ${req.method} ${req.url}`);
+    console.log(`   Full path: ${req.originalUrl}`);
+    console.log(`   Headers:`, {
+      'content-type': req.headers['content-type'],
+      'x-api-key': req.headers['x-api-key'] ? 'present' : 'missing'
+    });
+    console.log(`   Checking conditions:`, {
+      startsCrawler: req.url.startsWith('/crawler/'),
+      startsExternal: req.url.startsWith('/external/'),
+      exactExternal: req.url === '/external/events',
+      isPost: req.method === 'POST'
+    });
     
-    // Pass crawler and external events to their handlers
-    if (req.url.startsWith('/crawler/') || req.url === '/external/events') {
-      console.log('📨 Passing to crawler/external handler');
+    // Handle external events endpoint directly
+    if (req.url === '/external/events' && req.method === 'POST') {
+      console.log('📮 External events endpoint called in middleware');
+      
+      // Check API key - use the same key as external-events-api.ts
+      const apiKey = req.headers['x-api-key'] || req.headers['x-crawler-api-key'];
+      const validKey = process.env.EXTERNAL_API_KEY || 'eventconnect_external_api_key_2024';
+      
+      if (!apiKey || apiKey !== validKey) {
+        console.log('❌ Invalid API key for external events');
+        return res.status(403).json({ error: 'Invalid or missing API key' });
+      }
+      
+      try {
+        console.log('📦 Processing external event:', req.body);
+        const eventData = req.body;
+        
+        // Create the event using storage
+        const event = await storage.createExternalEvent(eventData);
+        console.log('✅ External event created successfully:', event.id);
+        
+        res.json({ 
+          success: true, 
+          eventId: event.id,
+          message: 'Event created successfully'
+        });
+      } catch (error) {
+        console.error('❌ External event creation failed:', error);
+        res.status(500).json({ 
+          error: 'Failed to create event', 
+          details: (error as Error).message 
+        });
+      }
+      return;
+    }
+    
+    // Handle crawler submit endpoint directly in middleware
+    if (req.url === '/crawler/submit-event' && req.method === 'POST') {
+      console.log('🤖 Crawler submit endpoint called in middleware');
+      
+      const apiKey = req.headers['x-crawler-api-key'];
+      const validCrawlerKey = process.env.CRAWLER_API_KEY || 'crawler_key_88406fa8b1d74df02e136686b8eb8051';
+      
+      if (apiKey !== validCrawlerKey) {
+        return res.status(401).json({ error: 'Invalid crawler API key' });
+      }
+      
+      try {
+        const eventData = req.body;
+        
+        // Validate required fields
+        if (!eventData.title || !eventData.date || !eventData.location) {
+          return res.status(400).json({ 
+            error: 'Missing required fields: title, date, location' 
+          });
+        }
+        
+        // Create the event using storage
+        const event = await storage.createExternalEvent(eventData);
+        console.log('✅ Crawler event created successfully:', event.id);
+        
+        res.json({ 
+          success: true, 
+          eventId: event.id,
+          message: 'Event created via crawler'
+        });
+      } catch (error) {
+        console.error('❌ Crawler event creation failed:', error);
+        res.status(500).json({ 
+          error: 'Failed to create event', 
+          details: (error as Error).message 
+        });
+      }
+      return;
+    }
+    
+    // Pass other crawler requests to their handlers  
+    if (req.url.startsWith('/crawler/')) {
+      console.log('📨 Passing to crawler handler');
       next();
       return;
     }
@@ -869,6 +1069,42 @@ async function setupServer() {
   await server.setupVite(app, httpServer);
   
   // CRITICAL: Re-register essential API routes AFTER Vite to override catch-all
+  
+  // External events endpoint - must be after Vite to work
+  app.post('/api/external/events', async (req, res) => {
+    console.log('📮 External events endpoint called (after Vite setup)');
+    
+    // Check API key
+    const apiKey = req.headers['x-api-key'] || req.headers['x-crawler-api-key'];
+    const validKey = process.env.EXTERNAL_API_KEY || 'eventconnect_external_api_key_2024';
+    
+    if (!apiKey || apiKey !== validKey) {
+      console.log('❌ Invalid API key for external events');
+      return res.status(403).json({ error: 'Invalid or missing API key' });
+    }
+    
+    try {
+      console.log('📦 Processing external event:', req.body);
+      const eventData = req.body;
+      
+      // Create the event using storage
+      const event = await storage.createExternalEvent(eventData);
+      console.log('✅ External event created successfully:', event.id);
+      
+      res.json({ 
+        success: true, 
+        eventId: event.id,
+        message: 'Event created successfully'
+      });
+    } catch (error) {
+      console.error('❌ External event creation failed:', error);
+      res.status(500).json({ 
+        error: 'Failed to create event', 
+        details: (error as Error).message 
+      });
+    }
+  });
+  
   app.get('/api/events', async (req, res) => {
     try {
       console.log('🔥 Direct API events call received');
