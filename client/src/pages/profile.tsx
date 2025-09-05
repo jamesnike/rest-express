@@ -162,7 +162,7 @@ export default function Profile() {
     queryKey: ["/api/users", user?.id, "events", "organized", "past"],
     queryFn: async () => {
       if (!user?.id) return [];
-      const response = await fetch(`/api/users/${user.id}/events?type=organized&pastOnly=true`);
+      const response = await apiRequest(`/api/users/${user.id}/events?type=organized&pastOnly=true`);
       if (!response.ok) throw new Error('Failed to fetch user events');
       return response.json() as Promise<EventWithOrganizer[]>;
     },
@@ -173,7 +173,7 @@ export default function Profile() {
     queryKey: ["/api/users", user?.id, "events", "attending", "past"],
     queryFn: async () => {
       if (!user?.id) return [];
-      const response = await fetch(`/api/users/${user.id}/events?type=attending&pastOnly=true`);
+      const response = await apiRequest(`/api/users/${user.id}/events?type=attending&pastOnly=true`);
       if (!response.ok) throw new Error('Failed to fetch attending events');
       return response.json() as Promise<EventWithOrganizer[]>;
     },
@@ -260,7 +260,7 @@ export default function Profile() {
 
   const generateSignatureMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch('/api/users/generate-signature', {
+      const response = await apiRequest('/api/users/generate-signature', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });

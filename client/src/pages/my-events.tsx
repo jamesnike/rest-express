@@ -46,7 +46,7 @@ export default function MyEvents() {
     queryKey: ["/api/users", user?.id, "events", "organized", "current"],
     queryFn: async () => {
       if (!user?.id) return [];
-      const response = await fetch(`/api/users/${user.id}/events?type=organized&pastOnly=false`);
+      const response = await apiRequest(`/api/users/${user.id}/events?type=organized&pastOnly=false`);
       if (!response.ok) throw new Error('Failed to fetch organized events');
       return response.json() as Promise<EventWithOrganizer[]>;
     },
@@ -61,7 +61,7 @@ export default function MyEvents() {
     queryKey: ["/api/users", user?.id, "events", "attending", "current"],
     queryFn: async () => {
       if (!user?.id) return [];
-      const response = await fetch(`/api/users/${user.id}/events?type=attending&pastOnly=false`);
+      const response = await apiRequest(`/api/users/${user.id}/events?type=attending&pastOnly=false`);
       if (!response.ok) throw new Error('Failed to fetch attending events');
       return response.json() as Promise<EventWithOrganizer[]>;
     },
@@ -77,7 +77,7 @@ export default function MyEvents() {
     queryKey: ["/api/users", user?.id, "saved-events"],
     queryFn: async () => {
       if (!user?.id) return [];
-      const response = await fetch(`/api/saved-events`);
+      const response = await apiRequest(`/api/saved-events`);
       if (!response.ok) throw new Error('Failed to fetch saved events');
       return response.json() as Promise<EventWithOrganizer[]>;
     },
