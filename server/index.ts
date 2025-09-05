@@ -1064,10 +1064,28 @@ async function setupServer() {
   // Register API routes BEFORE Vite setup
   await registerRoutes(app);
 
-  // Setup Vite for both development and production
-  // This keeps the same dynamic serving in production as requested
-  const server = await import("./vite");
-  await server.setupVite(app, httpServer);
+  // Only setup Vite in development, serve static files in production
+  if (process.env.NODE_ENV === 'production') {
+    // In production, serve the built static files from dist/public
+    const path = await import('path');
+    const { fileURLToPath } = await import('url');
+    const __dirname = path.dirname(fileURLToPath(import.meta.url));
+    
+    // Serve static files from the public directory
+    const publicPath = path.join(__dirname, 'public');
+    app.use(express.static(publicPath));
+    
+    // Catch-all route for client-side routing - MUST be after API routes
+    app.get('*', (req, res) => {
+      if (!req.path.startsWith('/api')) {
+        res.sendFile(path.join(publicPath, 'index.html'));
+      }
+    });
+  } else {
+    // Setup Vite only in development
+    const server = await import("./vite");
+    await server.setupVite(app, httpServer);
+  }
   
   // CRITICAL: Re-register essential API routes AFTER Vite to override catch-all
   
