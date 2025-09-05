@@ -595,6 +595,213 @@ async function setupServer() {
       return;
     }
     
+    // Handle user events (organized and attending)
+    if (req.url.match(/^\/users\/[^\/]+\/events/) && req.method === 'GET') {
+      const urlParts = req.url.split('?');
+      const params = new URLSearchParams(urlParts[1] || '');
+      const type = params.get('type');
+      
+      if (!userId) {
+        return res.json([]);
+      }
+      
+      try {
+        if (type === 'attending') {
+          // Get events user RSVP'd to
+          const rsvpEvents = await db.select({
+            event: events,
+            rsvpStatus: eventRsvps.status
+          })
+          .from(eventRsvps)
+          .innerJoin(events, eq(eventRsvps.eventId, events.id))
+          .where(
+            and(
+              eq(eventRsvps.userId, userId),
+              eq(eventRsvps.status, 'going')
+            )
+          );
+          
+          // Transform to match EventWithOrganizer structure
+          const eventsWithOrganizer = rsvpEvents.map(({ event, rsvpStatus }) => ({
+            ...event,
+            organizer: {
+              id: event.organizerId,
+              firstName: "Event",
+              lastName: "Organizer",
+              email: "organizer@eventconnect.com",
+              profileImageUrl: null,
+              aiSignature: null,
+              location: null,
+              username: null,
+              password: null,
+              oauthProvider: null,
+              oauthId: null,
+              customAvatarUrl: null,
+              animeAvatarSeed: "default",
+              interests: [],
+              personality: [],
+              skippedEvents: [],
+              eventsShownSinceSkip: 0,
+              createdAt: new Date(),
+              updatedAt: new Date()
+            },
+            rsvpCount: 0,
+            userRsvpStatus: rsvpStatus
+          }));
+          
+          console.log(`✅ Returning ${eventsWithOrganizer.length} attending events for user ${userId}`);
+          res.json(eventsWithOrganizer);
+        } else if (type === 'organized') {
+          // Get events organized by user
+          const organizedEvents = await db.select().from(events)
+            .where(eq(events.organizerId, userId));
+          
+          const eventsWithOrganizer = organizedEvents.map(event => ({
+            ...event,
+            organizer: {
+              id: userId,
+              firstName: "You",
+              lastName: "",
+              email: "you@eventconnect.com",
+              profileImageUrl: null,
+              aiSignature: null,
+              location: null,
+              username: null,
+              password: null,
+              oauthProvider: null,
+              oauthId: null,
+              customAvatarUrl: null,
+              animeAvatarSeed: "default",
+              interests: [],
+              personality: [],
+              skippedEvents: [],
+              eventsShownSinceSkip: 0,
+              createdAt: new Date(),
+              updatedAt: new Date()
+            },
+            rsvpCount: 0,
+            userRsvpStatus: undefined
+          }));
+          
+          console.log(`✅ Returning ${eventsWithOrganizer.length} organized events for user ${userId}`);
+          res.json(eventsWithOrganizer);
+        } else {
+          res.json([]);
+        }
+      } catch (error) {
+        console.error('❌ Error fetching user events:', error);
+        res.json([]);
+      }
+      return;
+    }
+    
+    // Handle saved events endpoint
+    if (req.url === '/saved-events' && req.method === 'GET') {
+      if (!userId) {
+        return res.json([]);
+      }
+      
+      try {
+        const saved = await db.select({
+          event: events
+        })
+        .from(savedEvents)
+        .innerJoin(events, eq(savedEvents.eventId, events.id))
+        .where(eq(savedEvents.userId, userId));
+        
+        const eventsWithOrganizer = saved.map(({ event }) => ({
+          ...event,
+          organizer: {
+            id: event.organizerId,
+            firstName: "Event",
+            lastName: "Organizer",
+            email: "organizer@eventconnect.com",
+            profileImageUrl: null,
+            aiSignature: null,
+            location: null,
+            username: null,
+            password: null,
+            oauthProvider: null,
+            oauthId: null,
+            customAvatarUrl: null,
+            animeAvatarSeed: "default",
+            interests: [],
+            personality: [],
+            skippedEvents: [],
+            eventsShownSinceSkip: 0,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          },
+          rsvpCount: 0,
+          userRsvpStatus: undefined
+        }));
+        
+        console.log(`✅ Returning ${eventsWithOrganizer.length} saved events for user ${userId}`);
+        res.json(eventsWithOrganizer);
+      } catch (error) {
+        console.error('❌ Error fetching saved events:', error);
+        res.json([]);
+      }
+      return;
+    }
+    
+    // Handle group chats endpoint 
+    if (req.url.match(/^\/users\/[^\/]+\/group-chats/) && req.method === 'GET') {
+      if (!userId) {
+        return res.json([]);
+      }
+      
+      try {
+        // Get events user is attending (these are their group chats)
+        const groupChats = await db.select({
+          event: events
+        })
+        .from(eventRsvps)
+        .innerJoin(events, eq(eventRsvps.eventId, events.id))
+        .where(
+          and(
+            eq(eventRsvps.userId, userId),
+            eq(eventRsvps.status, 'going'),
+            eq(eventRsvps.hasLeftChat, false)
+          )
+        );
+        
+        const eventsWithOrganizer = groupChats.map(({ event }) => ({
+          ...event,
+          organizer: {
+            id: event.organizerId,
+            firstName: "Event",
+            lastName: "Organizer",
+            email: "organizer@eventconnect.com",
+            profileImageUrl: null,
+            aiSignature: null,
+            location: null,
+            username: null,
+            password: null,
+            oauthProvider: null,
+            oauthId: null,
+            customAvatarUrl: null,
+            animeAvatarSeed: "default",
+            interests: [],
+            personality: [],
+            skippedEvents: [],
+            eventsShownSinceSkip: 0,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          },
+          rsvpCount: 0,
+          userRsvpStatus: 'going'
+        }));
+        
+        console.log(`✅ Returning ${eventsWithOrganizer.length} group chats for user ${userId}`);
+        res.json(eventsWithOrganizer);
+      } catch (error) {
+        console.error('❌ Error fetching group chats:', error);
+        res.json([]);
+      }
+      return;
+    }
+    
     // Handle test API directly in middleware  
     if (req.url === '/test' && req.method === 'GET') {
       console.log('🧪 Test API called via middleware');
