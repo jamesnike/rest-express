@@ -7,6 +7,7 @@ import { registerRoutes } from "./routes";
 import { db } from "./db";
 import { events, users, eventRsvps, savedEvents } from "@shared/schema";
 import { and, eq, or } from "drizzle-orm";
+import { setupSimplifiedCrawlerAPI } from "./simplified-crawler";
 
 const app = express();
 app.use(express.json());
@@ -423,6 +424,9 @@ const httpServer = createServer(app);
 
 // Setup routes and Vite in async function
 async function setupServer() {
+  // Setup simplified crawler API endpoints FIRST (before the general API middleware)
+  setupSimplifiedCrawlerAPI(app);
+  
   // CRITICAL: Add API middleware that bypasses Vite catch-all
   app.use('/api', async (req, res, next) => {
     console.log(`🎯 API middleware intercepted: ${req.method} ${req.url}`);

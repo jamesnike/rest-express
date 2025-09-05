@@ -4,6 +4,7 @@ hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
 [nix]
 channel = "stable-24_05"
+packages = ["chromium", "glib", "gtk3", "nspr", "nss", "atk", "at-spi2-atk", "cups", "alsa-lib", "xorg.libX11", "xorg.libXcomposite", "xorg.libXcursor", "xorg.libXdamage", "xorg.libXext", "xorg.libXi", "xorg.libXrandr", "xorg.libXrender", "xorg.libXtst", "xorg.libxcb"]
 
 [deployment]
 deploymentTarget = "autoscale"
@@ -40,4 +41,4 @@ args = "npm run dev"
 waitForPort = 5000
 
 [agent]
-integrations = ["firebase_barebones_javascript==1.0.0", "javascript_log_in_with_replit==1.0.0", "javascript_database==1.0.0"]
+integrations = ["javascript_openai==1.0.0", "firebase_barebones_javascript==1.0.0", "javascript_database==1.0.0", "javascript_log_in_with_replit==1.0.0"]
