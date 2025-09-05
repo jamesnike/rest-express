@@ -25,7 +25,7 @@ app.get('/debug-' + debugId, (req, res) => {
 // JWT Authentication Routes
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { username, password, firstName, lastName } = req.body;
+    const { username, password, firstName, lastName, email } = req.body;
     
     if (!username || !password) {
       return res.status(400).json({ message: "Username and password required" });
@@ -41,8 +41,13 @@ app.post('/api/auth/register', async (req, res) => {
       password,
       firstName,
       lastName,
-      email: `${username}@example.com`,
+      email: email || `${username}@example.com`,  // Use provided email or fallback
     });
+
+    // Log demo user creation for debugging
+    if (username === 'demouser') {
+      console.log(`✅ Demo user created successfully: ${user.id} - ${user.email}`);
+    }
 
     const token = generateToken({
       sub: user.id,
