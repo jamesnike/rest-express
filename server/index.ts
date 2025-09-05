@@ -6,7 +6,7 @@ import { generateToken, verifyToken } from "./jwtAuth";
 import { registerRoutes } from "./routes";
 import { db } from "./db";
 import { events, users, eventRsvps, savedEvents } from "@shared/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 
 const app = express();
 app.use(express.json());
@@ -612,7 +612,9 @@ async function setupServer() {
       
       try {
         if (type === 'attending') {
-          // Get events user RSVP'd to
+          // Get events user RSVP'd to (including 'attending' status)
+          console.log(`🔍 Fetching attending events for user: ${userId}`);
+          
           const rsvpEvents = await db.select({
             event: events,
             rsvpStatus: eventRsvps.status
@@ -622,9 +624,14 @@ async function setupServer() {
           .where(
             and(
               eq(eventRsvps.userId, userId),
-              eq(eventRsvps.status, 'going')
+              or(
+                eq(eventRsvps.status, 'going'),
+                eq(eventRsvps.status, 'attending')
+              )
             )
           );
+          
+          console.log(`📊 Found ${rsvpEvents.length} RSVP events for user ${userId}`);
           
           // Transform to match EventWithOrganizer structure
           const eventsWithOrganizer = rsvpEvents.map(({ event, rsvpStatus }) => ({
@@ -695,7 +702,10 @@ async function setupServer() {
         }
       } catch (error) {
         console.error('❌ Error fetching user events:', error);
-        res.json([]);
+        res.status(500).json({ 
+          error: 'Failed to fetch user events', 
+          details: error instanceof Error ? error.message : 'Unknown error' 
+        });
       }
       return;
     }
@@ -707,12 +717,16 @@ async function setupServer() {
       }
       
       try {
+        console.log(`🔍 Fetching saved events for user: ${userId}`);
+        
         const saved = await db.select({
           event: events
         })
         .from(savedEvents)
         .innerJoin(events, eq(savedEvents.eventId, events.id))
         .where(eq(savedEvents.userId, userId));
+        
+        console.log(`📊 Found ${saved.length} saved events for user ${userId}`);
         
         const eventsWithOrganizer = saved.map(({ event }) => ({
           ...event,
@@ -745,7 +759,10 @@ async function setupServer() {
         res.json(eventsWithOrganizer);
       } catch (error) {
         console.error('❌ Error fetching saved events:', error);
-        res.json([]);
+        res.status(500).json({ 
+          error: 'Failed to fetch saved events', 
+          details: error instanceof Error ? error.message : 'Unknown error' 
+        });
       }
       return;
     }
