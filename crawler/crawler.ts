@@ -29,10 +29,13 @@ export class EventCrawler {
         '--no-sandbox', 
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
+        '--disable-blink-features=AutomationControlled',
+        '--disable-features=IsolateOrigins,site-per-process',
+        '--disable-web-security',
         '--disable-gpu',
-        '--no-first-run',
-        '--no-zygote',
-        '--single-process'
+        '--window-size=1920,1080',
+        '--start-maximized',
+        '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
       ]
     });
   }
@@ -48,38 +51,110 @@ export class EventCrawler {
     
     try {
       const page = await this.browser!.newPage();
-      await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
       
-      // Wait for event cards to load
-      await page.waitForSelector('[data-testid="event-card"]', { timeout: 10000 }).catch(() => {});
+      // Set viewport and user agent to bypass detection
+      await page.setViewport({ width: 1920, height: 1080 });
+      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
       
+      // Add extra headers to look more like a real browser
+      await page.setExtraHTTPHeaders({
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1'
+      });
+      
+      // Navigate with longer timeout
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+      
+      // Wait for dynamic content to load
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      
+      // Try multiple selectors for Eventbrite's dynamic structure
+      const selectors = [
+        'article[data-testid="event-card"]',
+        'div[data-testid="event-card-wrapper"]',
+        'a[data-event-label="Event Card"]',
+        '.event-card',
+        '.eds-event-card',
+        'div[class*="event-card"]',
+        'article[class*="Stack"]',
+        'div[class*="EventCard"]'
+      ];
+      
+      let foundSelector = null;
+      for (const selector of selectors) {
+        try {
+          await page.waitForSelector(selector, { timeout: 3000 });
+          foundSelector = selector;
+          console.log(`Found events with selector: ${selector}`);
+          break;
+        } catch (e) {
+          continue;
+        }
+      }
+      
+      if (!foundSelector) {
+        console.log('No event cards found, trying to extract any event data...');
+      }
+      
+      // Get page content and parse
       const html = await page.content();
       const $ = cheerio.load(html);
       
-      // Parse Eventbrite event cards
-      $('[data-testid="event-card"]').each((_, element) => {
-        const $el = $(element);
-        const title = $el.find('h3').text().trim();
-        const date = $el.find('[data-testid="event-date"]').text().trim();
-        const location = $el.find('[data-testid="event-location"]').text().trim();
-        const price = $el.find('[data-testid="event-price"]').text().trim();
-        const link = $el.find('a').attr('href');
-        const imageUrl = $el.find('img').attr('src');
-        
-        if (title && date) {
-          events.push({
-            title,
-            description: `Event from Eventbrite: ${title}`,
-            date: this.parseDate(date),
-            time: this.extractTime(date) || '19:00',
-            location: location || 'San Carlos, CA',
-            category: 'Community',
-            price: price || 'Free',
-            sourceUrl: link ? `https://www.eventbrite.com${link}` : url,
-            imageUrl
-          });
-        }
-      });
+      // Try to find events with various selectors
+      const eventSelectors = foundSelector ? [foundSelector] : selectors;
+      
+      for (const selector of eventSelectors) {
+        $(selector).each((_, element) => {
+          const $el = $(element);
+          
+          // Try multiple ways to extract title
+          const title = $el.find('h3').text().trim() ||
+                       $el.find('h2').text().trim() ||
+                       $el.find('[class*="Typography-title"]').text().trim() ||
+                       $el.find('[class*="event-card__title"]').text().trim() ||
+                       $el.find('a[class*="event-card"]').text().trim();
+          
+          // Try multiple ways to extract date
+          const date = $el.find('[data-testid="event-date"]').text().trim() ||
+                      $el.find('[class*="event-card__date"]').text().trim() ||
+                      $el.find('time').text().trim() ||
+                      $el.find('[class*="date"]').first().text().trim();
+          
+          // Try multiple ways to extract location
+          const location = $el.find('[data-testid="event-location"]').text().trim() ||
+                          $el.find('[class*="event-card__location"]').text().trim() ||
+                          $el.find('[class*="location"]').text().trim() ||
+                          $el.find('[class*="venue"]').text().trim();
+          
+          // Extract price
+          const price = $el.find('[class*="price"]').text().trim() ||
+                       $el.find('[class*="cost"]').text().trim() ||
+                       'Check event page';
+          
+          // Extract link
+          const link = $el.find('a').attr('href') || $el.attr('href');
+          
+          // Extract image
+          const imageUrl = $el.find('img').attr('src') || $el.find('img').attr('data-src');
+          
+          if (title && (date || location)) {
+            events.push({
+              title,
+              description: `${title} - Discovered from Eventbrite`,
+              date: this.parseDate(date) || '2025-09-30',
+              time: this.extractTime(date) || '19:00',
+              location: location || 'San Carlos, CA',
+              category: 'Community',
+              price: price || 'Free',
+              sourceUrl: link ? (link.startsWith('http') ? link : `https://www.eventbrite.com${link}`) : url,
+              imageUrl
+            });
+          }
+        });
+      }
       
       await page.close();
     } catch (error) {
@@ -129,33 +204,67 @@ export class EventCrawler {
     
     try {
       const page = await this.browser!.newPage();
-      await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+      
+      // Set viewport and user agent
+      await page.setViewport({ width: 1920, height: 1080 });
+      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+      
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+      
+      // Wait for content to load
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      
+      // Try to find event listings
+      const selectors = [
+        'article.type-post',
+        'div.tanggal',
+        '.event-list-item',
+        '.list-event',
+        'article[id*="post"]',
+        '.fc-event'
+      ];
+      
+      let foundSelector = null;
+      for (const selector of selectors) {
+        try {
+          await page.waitForSelector(selector, { timeout: 2000 });
+          foundSelector = selector;
+          console.log(`Found FunCheap events with selector: ${selector}`);
+          break;
+        } catch (e) {
+          continue;
+        }
+      }
       
       const html = await page.content();
       const $ = cheerio.load(html);
       
       // Parse FunCheap event format
-      $('.entry-event, article.event').each((_, element) => {
-        const $el = $(element);
-        const title = $el.find('h2, .entry-title').text().trim();
-        const date = $el.find('.date-display, .event-date').text().trim();
-        const description = $el.find('.entry-summary, .description').text().trim();
-        const location = $el.find('.location, .venue').text().trim();
-        const link = $el.find('a').attr('href');
-        
-        if (title && date) {
-          events.push({
-            title,
-            description: description || `Fun & affordable event: ${title}`,
-            date: this.parseDate(date),
-            time: this.extractTime(date) || '18:00',
-            location: location || 'San Francisco',
-            category: 'Entertainment',
-            price: 'Free or Low Cost',
-            sourceUrl: link || url
-          });
-        }
-      });
+      const eventSelectors = foundSelector ? [foundSelector] : selectors;
+      
+      for (const selector of eventSelectors) {
+        $(selector).each((_, element) => {
+          const $el = $(element);
+          const title = $el.find('h2, .entry-title').text().trim();
+          const date = $el.find('.date-display, .event-date').text().trim();
+          const description = $el.find('.entry-summary, .description').text().trim();
+          const location = $el.find('.location, .venue').text().trim();
+          const link = $el.find('a').attr('href');
+          
+          if (title && date) {
+            events.push({
+              title,
+              description: description || `Fun & affordable event: ${title}`,
+              date: this.parseDate(date),
+              time: this.extractTime(date) || '18:00',
+              location: location || 'San Francisco',
+              category: 'Entertainment',
+              price: 'Free or Low Cost',
+              sourceUrl: link || url
+            });
+          }
+        });
+      }
       
       await page.close();
     } catch (error) {
