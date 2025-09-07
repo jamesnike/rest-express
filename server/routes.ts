@@ -1196,33 +1196,131 @@ User's question: ${message}`;
 
   const httpServer = createServer(app);
   
-  // WebSocket server for real-time chat
-  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  // WebSocket server for real-time chat with optimized settings
+  const wss = new WebSocketServer({ 
+    server: httpServer, 
+    path: '/ws',
+    perMessageDeflate: {
+      zlibDeflateOptions: {
+        level: 1, // Fast compression
+        memLevel: 8,
+        strategy: 0,
+      },
+      zlibInflateOptions: {
+        chunkSize: 10 * 1024
+      },
+      clientNoContextTakeover: true,
+      serverNoContextTakeover: true,
+      serverMaxWindowBits: 10,
+      concurrencyLimit: 10,
+      threshold: 1024, // Only compress messages larger than 1KB
+    },
+    maxPayload: 10 * 1024 * 1024 // 10MB max message size
+  });
   
-  // Store WebSocket connections by event ID
+  // Store WebSocket connections by event ID with enhanced metadata
   const eventConnections = new Map<number, Set<WebSocket>>();
   
   // Store notification subscribers (users listening for all their events)
   const notificationSubscribers = new Set<WebSocket>();
   
+  // Message buffer for temporarily disconnected clients
+  const messageBuffer = new Map<string, Array<{message: any, timestamp: number}>>();
+  const BUFFER_TIMEOUT = 30000; // Keep messages for 30 seconds
+  
+  // Heartbeat mechanism to keep connections alive
+  const HEARTBEAT_INTERVAL = 15000; // 15 seconds
+  const PONG_TIMEOUT = 5000; // 5 seconds to respond to ping
+  
+  // Track connection health
+  const connectionHealth = new WeakMap<WebSocket, {
+    isAlive: boolean;
+    lastActivity: number;
+    userId?: string;
+    clientId?: string;
+  }>();
+  
+  // Heartbeat function
+  function heartbeat(this: WebSocket) {
+    const health = connectionHealth.get(this);
+    if (health) {
+      health.isAlive = true;
+      health.lastActivity = Date.now();
+    }
+  }
+  
+  // Start heartbeat interval
+  const heartbeatInterval = setInterval(() => {
+    wss.clients.forEach((ws) => {
+      const health = connectionHealth.get(ws);
+      if (health) {
+        if (!health.isAlive) {
+          // Connection is dead, terminate it
+          console.log('Terminating dead WebSocket connection');
+          ws.terminate();
+          return;
+        }
+        
+        // Mark as not alive and send ping
+        health.isAlive = false;
+        ws.ping();
+      }
+    });
+  }, HEARTBEAT_INTERVAL);
+  
+  // Clean up old buffered messages periodically
+  setInterval(() => {
+    const now = Date.now();
+    Array.from(messageBuffer.entries()).forEach(([clientId, messages]) => {
+      const filtered = messages.filter((m: {message: any, timestamp: number}) => now - m.timestamp < BUFFER_TIMEOUT);
+      if (filtered.length === 0) {
+        messageBuffer.delete(clientId);
+      } else {
+        messageBuffer.set(clientId, filtered);
+      }
+    });
+  }, 10000);
+  
   wss.on('connection', (ws: WebSocket, req) => {
     console.log('WebSocket connection established');
+    
+    // Initialize connection health tracking
+    connectionHealth.set(ws, {
+      isAlive: true,
+      lastActivity: Date.now()
+    });
+    
+    // Set up ping/pong handlers
+    ws.on('pong', heartbeat);
+    
+    // Send immediate ping to verify connection
+    ws.ping();
     
     ws.on('message', async (data) => {
       try {
         const message = JSON.parse(data.toString());
         
         if (message.type === 'join') {
-          const { eventId, userId } = message;
+          const { eventId, userId, clientId } = message;
           
-          // Verify event exists
-          const event = await storage.getEvent(eventId, userId);
-          if (!event) {
-            ws.send(JSON.stringify({ type: 'error', message: 'Event not found' }));
-            return;
+          // Update connection health with user info
+          const health = connectionHealth.get(ws);
+          if (health) {
+            health.userId = userId;
+            health.clientId = clientId || `${userId}_${Date.now()}`;
           }
           
-          // Add connection to event room
+          // Quick verify event exists (non-blocking)
+          storage.getEvent(eventId, userId).then(event => {
+            if (!event) {
+              ws.send(JSON.stringify({ type: 'error', message: 'Event not found' }));
+              return;
+            }
+          }).catch(error => {
+            console.error('Error verifying event:', error);
+          });
+          
+          // Add connection to event room immediately
           if (!eventConnections.has(eventId)) {
             eventConnections.set(eventId, new Set());
           }
@@ -1231,8 +1329,21 @@ User's question: ${message}`;
           // Store event ID on WebSocket for cleanup
           (ws as any).eventId = eventId;
           (ws as any).userId = userId;
+          (ws as any).clientId = clientId || `${userId}_${Date.now()}`;
           
+          // Send joined confirmation immediately
           ws.send(JSON.stringify({ type: 'joined', eventId }));
+          
+          // Check and send any buffered messages for this client
+          const bufferedKey = `${userId}_${eventId}`;
+          if (messageBuffer.has(bufferedKey)) {
+            const messages = messageBuffer.get(bufferedKey)!;
+            console.log(`Sending ${messages.length} buffered messages to reconnected client`);
+            messages.forEach(({ message }) => {
+              ws.send(JSON.stringify(message));
+            });
+            messageBuffer.delete(bufferedKey);
+          }
         } else if (message.type === 'subscribe_notifications') {
           const { userId } = message;
           
@@ -1266,17 +1377,18 @@ User's question: ${message}`;
             return;
           }
           
-          // Save message to database
+          // Save message to database asynchronously for better performance
           const messageData = insertChatMessageSchema.parse({
             eventId,
             userId,
             message: content.trim(),
           });
           
-          const newMessage = await storage.createChatMessage(messageData);
-          
-          // Get message with user data - get the most recent message
-          const messagesWithUser = await storage.getChatMessages(eventId, 1);
+          // Create message and get with user data in parallel
+          const [newMessage, messagesWithUser] = await Promise.all([
+            storage.createChatMessage(messageData),
+            storage.getChatMessages(eventId, 1)
+          ]);
           const messageWithUser = messagesWithUser[0]; // Get the first (most recent) message
           
           console.log('Created message:', newMessage);
@@ -1296,10 +1408,27 @@ User's question: ${message}`;
               console.log(`Broadcasting message to ${connections.size} clients in event ${eventId}:`, messageWithUser);
               connections.forEach(client => {
                 if (client.readyState === WebSocket.OPEN) {
-                  console.log('Sending to client:', broadcastData);
+                  // Send immediately without logging for performance
                   client.send(broadcastData);
                 } else {
-                  console.log('Client not ready, readyState:', client.readyState);
+                  // Buffer message for disconnected clients
+                  const clientUserId = (client as any).userId;
+                  const clientEventId = (client as any).eventId;
+                  if (clientUserId && clientEventId) {
+                    const bufferedKey = `${clientUserId}_${clientEventId}`;
+                    if (!messageBuffer.has(bufferedKey)) {
+                      messageBuffer.set(bufferedKey, []);
+                    }
+                    messageBuffer.get(bufferedKey)!.push({
+                      message: {
+                        type: 'newMessage',
+                        eventId: eventId,
+                        message: messageWithUser
+                      },
+                      timestamp: Date.now()
+                    });
+                    console.log(`Buffered message for disconnected client ${clientUserId}`);
+                  }
                 }
               });
             } else {
@@ -1318,6 +1447,9 @@ User's question: ${message}`;
     ws.on('close', () => {
       // Clean up connection from event rooms
       const eventId = (ws as any).eventId;
+      const userId = (ws as any).userId;
+      
+      console.log(`WebSocket closed for user ${userId} in event ${eventId}`);
       
       // Remove from notification subscribers
       notificationSubscribers.delete(ws);
@@ -1327,11 +1459,20 @@ User's question: ${message}`;
           eventConnections.delete(eventId);
         }
       }
+      
+      // Clean up connection health tracking
+      connectionHealth.delete(ws);
     });
     
     ws.on('error', (error) => {
       console.error('WebSocket error:', error);
     });
+  });
+  
+  // Clean up on server shutdown
+  process.on('SIGTERM', () => {
+    clearInterval(heartbeatInterval);
+    wss.close();
   });
   
   return httpServer;

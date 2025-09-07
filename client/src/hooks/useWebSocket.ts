@@ -17,6 +17,10 @@ export function useWebSocket(eventId: number | null) {
   const ws = useRef<WebSocket | null>(null);
   const reconnectTimeout = useRef<NodeJS.Timeout | null>(null);
   const currentEventId = useRef<number | null>(null);
+  const reconnectAttempts = useRef(0);
+  const maxReconnectDelay = 3000;
+  const minReconnectDelay = 100;
+  const clientId = useRef(`${user?.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
 
   const connect = () => {
     if (!user || !eventId) return;
@@ -30,12 +34,16 @@ export function useWebSocket(eventId: number | null) {
       console.log('WebSocket connected');
       setIsConnected(true);
       
-      // Join the event room
+      // Join the event room with client ID for buffered message recovery
       ws.current?.send(JSON.stringify({
         type: 'join',
         eventId,
-        userId: user.id
+        userId: user.id,
+        clientId: clientId.current
       }));
+      
+      // Reset reconnect attempts on successful connection
+      reconnectAttempts.current = 0;
     };
 
     ws.current.onmessage = (event) => {
@@ -112,23 +120,36 @@ export function useWebSocket(eventId: number | null) {
       }
     };
 
-    ws.current.onclose = () => {
-      console.log('WebSocket disconnected');
+    ws.current.onclose = (event) => {
+      console.log('WebSocket disconnected', event.code, event.reason);
       setIsConnected(false);
       
-      // Attempt to reconnect after 3 seconds
+      // Calculate exponential backoff with jitter for reconnection
+      const baseDelay = Math.min(minReconnectDelay * Math.pow(2, reconnectAttempts.current), maxReconnectDelay);
+      const jitter = Math.random() * 0.3 * baseDelay; // Add 0-30% jitter
+      const reconnectDelay = Math.floor(baseDelay + jitter);
+      
+      reconnectAttempts.current++;
+      
+      // Attempt to reconnect with exponential backoff
       if (reconnectTimeout.current) {
         clearTimeout(reconnectTimeout.current);
       }
+      
+      console.log(`Reconnecting in ${reconnectDelay}ms (attempt ${reconnectAttempts.current})`);
       reconnectTimeout.current = setTimeout(() => {
         console.log('Attempting to reconnect...');
         connect();
-      }, 3000);
+      }, reconnectDelay);
     };
 
     ws.current.onerror = (error) => {
       console.error('WebSocket error:', error);
       setIsConnected(false);
+      // Don't wait for close event, try to reconnect immediately on error
+      if (ws.current?.readyState === WebSocket.CLOSED) {
+        ws.current.onclose?.(new CloseEvent('error'));
+      }
     };
   };
 
@@ -146,6 +167,24 @@ export function useWebSocket(eventId: number | null) {
 
   const sendMessage = (content: string) => {
     if (!ws.current || !user || !eventId) return;
+    
+    // Check WebSocket state and reconnect if needed
+    if (ws.current.readyState !== WebSocket.OPEN) {
+      console.log('WebSocket not open, attempting to reconnect before sending');
+      connect();
+      // Queue the message to be sent after reconnection
+      setTimeout(() => {
+        if (ws.current?.readyState === WebSocket.OPEN) {
+          ws.current.send(JSON.stringify({
+            type: 'message',
+            eventId,
+            userId: user.id,
+            content
+          }));
+        }
+      }, 500);
+      return;
+    }
 
     ws.current.send(JSON.stringify({
       type: 'message',
