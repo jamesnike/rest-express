@@ -8,6 +8,7 @@ import { z } from "zod";
 import OpenAI from "openai";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
+import { userCache, eventCache, messageCache, invalidateUserCaches, invalidateEventCaches } from "./cache";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth setup
@@ -1310,15 +1311,24 @@ User's question: ${message}`;
             health.clientId = clientId || `${userId}_${Date.now()}`;
           }
           
-          // Quick verify event exists (non-blocking)
-          storage.getEvent(eventId, userId).then(event => {
-            if (!event) {
-              ws.send(JSON.stringify({ type: 'error', message: 'Event not found' }));
-              return;
-            }
-          }).catch(error => {
-            console.error('Error verifying event:', error);
-          });
+          // Quick verify event exists (non-blocking with cache)
+          const cachedEvent = eventCache.get(eventId.toString());
+          if (cachedEvent === null) {
+            // We know for sure the event doesn't exist
+            ws.send(JSON.stringify({ type: 'error', message: 'Event not found' }));
+            return;
+          } else if (!cachedEvent) {
+            // Not in cache, fetch asynchronously
+            storage.getEvent(eventId, userId).then(event => {
+              eventCache.set(eventId.toString(), event || null);
+              if (!event) {
+                ws.send(JSON.stringify({ type: 'error', message: 'Event not found' }));
+                return;
+              }
+            }).catch(error => {
+              console.error('Error verifying event:', error);
+            });
+          }
           
           // Add connection to event room immediately
           if (!eventConnections.has(eventId)) {
