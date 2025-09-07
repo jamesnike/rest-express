@@ -127,7 +127,14 @@ export const chatMessages = pgTable("chat_messages", {
   quotedMessageId: integer("quoted_message_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  // Composite index for efficient message queries
+  eventIdCreatedAtIdx: index("chat_messages_event_id_created_at_idx").on(table.eventId, table.createdAt),
+  // Index for user's messages
+  userIdIdx: index("chat_messages_user_id_idx").on(table.userId),
+  // Index for quoted messages lookup
+  quotedMessageIdx: index("chat_messages_quoted_message_idx").on(table.quotedMessageId),
+}));
 
 export const chatMessageRelations = relations(chatMessages, ({ one }) => ({
   event: one(events, { fields: [chatMessages.eventId], references: [events.id] }),
@@ -145,6 +152,10 @@ export const messageReads = pgTable("message_reads", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => ({
   userEventUnique: unique().on(table.userId, table.eventId),
+  // Index for fast lookup of user's read status
+  userIdEventIdIdx: index("message_reads_user_id_event_id_idx").on(table.userId, table.eventId),
+  // Index for finding all reads for an event
+  eventIdIdx: index("message_reads_event_id_idx").on(table.eventId),
 }));
 
 export const messageReadRelations = relations(messageReads, ({ one }) => ({
