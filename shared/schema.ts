@@ -56,6 +56,8 @@ export const events = pgTable("events", {
   subCategory: varchar("sub_category", { length: 100 }), // Optional subcategory within each main category
   date: date("date").notNull(),
   time: time("time").notNull(),
+  timezone: varchar("timezone", { length: 50 }).notNull().default("America/Los_Angeles"), // IANA timezone identifier
+  utcDateTime: timestamp("utc_date_time", { withTimezone: true }), // UTC timestamp for the event
   location: varchar("location", { length: 255 }).notNull(),
   latitude: decimal("latitude", { precision: 10, scale: 8 }),
   longitude: decimal("longitude", { precision: 11, scale: 8 }),
