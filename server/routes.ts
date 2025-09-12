@@ -27,11 +27,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Event routes
-  // Browse events route - shows events for next 7 days without filtering skipped ones (must be before /api/events/:id)
+  // Browse events route - shows events for next 7 days or specific date/time without filtering skipped ones (must be before /api/events/:id)
   app.get('/api/events/browse', async (req, res) => {
     try {
       const category = req.query.category as string | undefined;
       const timeFilter = req.query.timeFilter as string | undefined;
+      const specificDate = req.query.date as string | undefined;  // e.g., "2025-09-15"
+      const timePeriod = req.query.timePeriod as string | undefined;  // "AM", "PM", or "Night"
       
       // Parse and sanitize pagination parameters
       let limit = req.query.limit ? parseInt(req.query.limit as string) : 20; // Default 20 for mobile efficiency
@@ -51,19 +53,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         offset = (page - 1) * limit;
       }
       
-      // Get today's date and 7 days from now
-      const today = new Date();
-      const startDate = today.toISOString().split('T')[0]; // Today in YYYY-MM-DD format
+      let startDate: string, endDate: string;
       
-      const endDateObj = new Date(today);
-      endDateObj.setDate(today.getDate() + 7);
-      const endDate = endDateObj.toISOString().split('T')[0]; // 7 days from now in YYYY-MM-DD format
+      // Check if user wants a specific date and time period
+      if (specificDate && timePeriod) {
+        // Validate date format (YYYY-MM-DD)
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(specificDate)) {
+          return res.status(400).json({ message: "Invalid date format. Use YYYY-MM-DD" });
+        }
+        
+        // For specific date/time filtering, use the same date as start and end
+        startDate = specificDate;
+        endDate = specificDate;
+        
+      } else {
+        // Default behavior: Get today's date and 7 days from now
+        const today = new Date();
+        startDate = today.toISOString().split('T')[0]; // Today in YYYY-MM-DD format
+        
+        const endDateObj = new Date(today);
+        endDateObj.setDate(today.getDate() + 7);
+        endDate = endDateObj.toISOString().split('T')[0]; // 7 days from now in YYYY-MM-DD format
+      }
       
       // Get total count of events in date range
-      const total = await storage.getEventCountByDateRange(startDate, endDate, category, timeFilter, timezoneOffset);
+      const total = await storage.getEventCountByDateRange(startDate, endDate, category, timeFilter, timePeriod, timezoneOffset);
       
       // Get paginated events with date range filtering
-      const events = await storage.getEventsByDateRange(startDate, endDate, category, timeFilter, limit, offset, timezoneOffset);
+      const events = await storage.getEventsByDateRange(startDate, endDate, category, timeFilter, timePeriod, limit, offset, timezoneOffset);
       
       // Calculate pagination metadata
       const currentPage = total > 0 ? Math.floor(offset / limit) + 1 : 1;
