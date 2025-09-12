@@ -358,7 +358,7 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(eventRsvps, eq(events.id, eventRsvps.eventId))
       .where(and(...whereConditions))
       .groupBy(events.id, users.id)
-      .orderBy(asc(events.date), asc(events.time))
+      .orderBy(asc(events.date), asc(events.time), asc(events.id))
       .limit(limit)
       .offset(offset);
 

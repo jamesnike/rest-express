@@ -32,15 +32,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const category = req.query.category as string | undefined;
       const timeFilter = req.query.timeFilter as string | undefined;
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+      
+      // Parse and sanitize pagination parameters
+      let limit = req.query.limit ? parseInt(req.query.limit as string) : 20; // Default 20 for mobile efficiency
+      if (isNaN(limit) || limit < 1) limit = 20;
+      if (limit > 100) limit = 100; // Max 100 to prevent abuse
+      
       const timezoneOffset = req.query.timezoneOffset ? parseInt(req.query.timezoneOffset as string) : 0;
       
-      // Handle pagination parameters
+      // Handle pagination parameters with validation
       let offset = 0;
       if (req.query.offset) {
         offset = parseInt(req.query.offset as string);
+        if (isNaN(offset) || offset < 0) offset = 0;
       } else if (req.query.page) {
-        const page = parseInt(req.query.page as string);
+        let page = parseInt(req.query.page as string);
+        if (isNaN(page) || page < 1) page = 1;
         offset = (page - 1) * limit;
       }
       
@@ -59,8 +66,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const events = await storage.getEventsByDateRange(startDate, endDate, category, timeFilter, limit, offset, timezoneOffset);
       
       // Calculate pagination metadata
-      const currentPage = Math.floor(offset / limit) + 1;
-      const totalPages = Math.ceil(total / limit);
+      const currentPage = total > 0 ? Math.floor(offset / limit) + 1 : 1;
+      const totalPages = total > 0 ? Math.ceil(total / limit) : 1;
       const hasNext = offset + limit < total;
       const hasPrevious = offset > 0;
       
