@@ -8,6 +8,7 @@ import EventDetail from "@/components/EventDetail";
 import CreateEvent from "@/components/CreateEvent";
 import BottomNav from "@/components/BottomNav";
 import { EventWithOrganizer } from "@shared/schema";
+import { getUserTimezone } from "@/lib/timezone";
 
 export default function Browse() {
   const [selectedCategory, setSelectedCategory] = useState(() => {
@@ -26,13 +27,16 @@ export default function Browse() {
   const { data: filteredEvents, isLoading } = useQuery({
     queryKey: ["/api/events/browse", { timeFilter: selectedCategory }],
     queryFn: async () => {
-      // Send user's timezone offset to server
-      const timezoneOffset = new Date().getTimezoneOffset();
-      const response = await fetch(`/api/events/browse?timeFilter=${selectedCategory}&limit=100&timezoneOffset=${timezoneOffset}`);
+      // Send user's timezone to server (defaults to UTC if not provided)
+      const timezone = getUserTimezone();
+      const timezoneOffset = new Date().getTimezoneOffset(); // Keep for backward compatibility
+      const response = await fetch(`/api/events/browse?timeFilter=${selectedCategory}&limit=100&timezone=${encodeURIComponent(timezone)}&timezoneOffset=${timezoneOffset}`);
       if (!response.ok) {
         throw new Error('Failed to fetch events');
       }
-      return response.json() as Promise<EventWithOrganizer[]>;
+      const data = await response.json();
+      // Handle paginated response (has events array) or direct array
+      return (data.events || data) as EventWithOrganizer[];
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
@@ -59,7 +63,7 @@ export default function Browse() {
             <div className="flex justify-center items-center h-64">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
-          ) : filteredEvents.length === 0 ? (
+          ) : !filteredEvents || filteredEvents.length === 0 ? (
             <div className="text-center py-12">
               <Search className="w-16 h-16 text-gray-300 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No events found</h3>
@@ -87,10 +91,6 @@ export default function Browse() {
           <EventDetail
             event={selectedEvent}
             onClose={() => setSelectedEvent(null)}
-            onNavigateToContent={() => {
-              // Navigate to EventContent page for group chat
-              setLocation(`/event-content/${selectedEvent.id}?fromBrowse=true`);
-            }}
             fromPage="browse"
           />
         </div>
