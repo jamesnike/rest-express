@@ -27,7 +27,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Event routes
-  // Browse events route - shows ALL events without filtering skipped ones (must be before /api/events/:id)
+  // Browse events route - shows events for next 7 days without filtering skipped ones (must be before /api/events/:id)
   app.get('/api/events/browse', async (req, res) => {
     try {
       const category = req.query.category as string | undefined;
@@ -35,8 +35,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
       const timezoneOffset = req.query.timezoneOffset ? parseInt(req.query.timezoneOffset as string) : 0;
       
-      // Don't pass userId to avoid filtering skipped events, and don't exclude past events for Browse
-      const events = await storage.getEvents(undefined, category, timeFilter, limit, false, timezoneOffset);
+      // Get today's date and 7 days from now
+      const today = new Date();
+      const startDate = today.toISOString().split('T')[0]; // Today in YYYY-MM-DD format
+      
+      const endDateObj = new Date(today);
+      endDateObj.setDate(today.getDate() + 7);
+      const endDate = endDateObj.toISOString().split('T')[0]; // 7 days from now in YYYY-MM-DD format
+      
+      // Get events with date range filtering
+      const events = await storage.getEventsByDateRange(startDate, endDate, category, timeFilter, limit, timezoneOffset);
       res.json(events);
     } catch (error) {
       console.error("Error fetching browse events:", error);

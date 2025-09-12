@@ -31,6 +31,7 @@ export interface IStorage {
   
   // Event operations
   getEvents(userId?: string, category?: string, timeFilter?: string, limit?: number, excludePastEvents?: boolean, timezoneOffset?: number): Promise<EventWithOrganizer[]>;
+  getEventsByDateRange(startDate: string, endDate: string, category?: string, timeFilter?: string, limit?: number, timezoneOffset?: number): Promise<EventWithOrganizer[]>;
   getEvent(id: number, userId?: string): Promise<EventWithOrganizer | undefined>;
   createEvent(event: InsertEvent): Promise<Event>;
   createExternalEvent(event: { title: string; description: string; category: string; date: string; time: string; location: string; organizerEmail?: string; source?: string; sourceUrl?: string; latitude?: string; longitude?: string; price?: string; isFree?: boolean; eventImageUrl?: string; [key: string]: any }): Promise<Event>;
@@ -267,6 +268,90 @@ export class DatabaseStorage implements IStorage {
         },
         rsvpCount: sql<number>`COUNT(${eventRsvps.id})::int`,
         userRsvpStatus: userId ? sql<string>`MAX(CASE WHEN ${eventRsvps.userId} = ${userId} THEN ${eventRsvps.status} END)` : sql<string>`NULL`,
+      })
+      .from(events)
+      .leftJoin(users, eq(events.organizerId, users.id))
+      .leftJoin(eventRsvps, eq(events.id, eventRsvps.eventId))
+      .where(and(...whereConditions))
+      .groupBy(events.id, users.id)
+      .orderBy(asc(events.date), asc(events.time))
+      .limit(limit);
+
+    const results = await query;
+    return results.map(result => ({
+      ...result,
+      organizer: result.organizer!,
+      rsvpCount: result.rsvpCount || 0,
+      userRsvpStatus: result.userRsvpStatus || undefined,
+      isPrivateChat: result.isPrivateChat ? true : undefined,
+    }) as any);
+  }
+
+  async getEventsByDateRange(startDate: string, endDate: string, category?: string, timeFilter?: string, limit = 100, timezoneOffset = 0): Promise<EventWithOrganizer[]> {
+    // Build WHERE conditions for date range filtering
+    const whereConditions = [
+      eq(events.isActive, true),
+      // Always exclude private chats from public event listings
+      or(
+        eq(events.isPrivateChat, false),
+        sql`${events.isPrivateChat} IS NULL`
+      ),
+      // Date range filtering - events between startDate and endDate (inclusive)
+      gte(events.date, startDate),
+      lte(events.date, endDate),
+      category ? eq(events.category, category) : undefined,
+      ...(timeFilter ? this.getTimeFilterWhere(timeFilter, timezoneOffset) : []),
+    ].filter(Boolean);
+
+    const query = db
+      .select({
+        id: events.id,
+        title: events.title,
+        description: events.description,
+        category: events.category,
+        subCategory: events.subCategory,
+        date: events.date,
+        time: events.time,
+        location: events.location,
+        latitude: events.latitude,
+        longitude: events.longitude,
+        price: events.price,
+        isFree: events.isFree,
+        eventImageUrl: events.eventImageUrl,
+        organizerId: events.organizerId,
+        maxAttendees: events.maxAttendees,
+        capacity: events.capacity,
+        parkingInfo: events.parkingInfo,
+        meetingPoint: events.meetingPoint,
+        duration: events.duration,
+        whatToBring: events.whatToBring,
+        specialNotes: events.specialNotes,
+        requirements: events.requirements,
+        contactInfo: events.contactInfo,
+        cancellationPolicy: events.cancellationPolicy,
+        isActive: events.isActive,
+        isPrivateChat: events.isPrivateChat,
+        createdAt: events.createdAt,
+        updatedAt: events.updatedAt,
+        organizer: {
+          id: users.id,
+          email: users.email,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          profileImageUrl: users.profileImageUrl,
+          customAvatarUrl: users.customAvatarUrl,
+          animeAvatarSeed: users.animeAvatarSeed,
+          location: users.location,
+          interests: users.interests,
+          personality: users.personality,
+          aiSignature: users.aiSignature,
+          skippedEvents: users.skippedEvents,
+          eventsShownSinceSkip: users.eventsShownSinceSkip,
+          createdAt: users.createdAt,
+          updatedAt: users.updatedAt,
+        },
+        rsvpCount: sql<number>`COUNT(${eventRsvps.id})::int`,
+        userRsvpStatus: sql<string>`NULL`,
       })
       .from(events)
       .leftJoin(users, eq(events.organizerId, users.id))
