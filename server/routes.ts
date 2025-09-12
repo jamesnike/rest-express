@@ -32,8 +32,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const category = req.query.category as string | undefined;
       const timeFilter = req.query.timeFilter as string | undefined;
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
       const timezoneOffset = req.query.timezoneOffset ? parseInt(req.query.timezoneOffset as string) : 0;
+      
+      // Handle pagination parameters
+      let offset = 0;
+      if (req.query.offset) {
+        offset = parseInt(req.query.offset as string);
+      } else if (req.query.page) {
+        const page = parseInt(req.query.page as string);
+        offset = (page - 1) * limit;
+      }
       
       // Get today's date and 7 days from now
       const today = new Date();
@@ -43,9 +52,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       endDateObj.setDate(today.getDate() + 7);
       const endDate = endDateObj.toISOString().split('T')[0]; // 7 days from now in YYYY-MM-DD format
       
-      // Get events with date range filtering
-      const events = await storage.getEventsByDateRange(startDate, endDate, category, timeFilter, limit, timezoneOffset);
-      res.json(events);
+      // Get total count of events in date range
+      const total = await storage.getEventCountByDateRange(startDate, endDate, category, timeFilter, timezoneOffset);
+      
+      // Get paginated events with date range filtering
+      const events = await storage.getEventsByDateRange(startDate, endDate, category, timeFilter, limit, offset, timezoneOffset);
+      
+      // Calculate pagination metadata
+      const currentPage = Math.floor(offset / limit) + 1;
+      const totalPages = Math.ceil(total / limit);
+      const hasNext = offset + limit < total;
+      const hasPrevious = offset > 0;
+      
+      // Return paginated response with metadata
+      res.json({
+        events,
+        pagination: {
+          total,
+          limit,
+          offset,
+          currentPage,
+          totalPages,
+          hasNext,
+          hasPrevious
+        }
+      });
     } catch (error) {
       console.error("Error fetching browse events:", error);
       res.status(500).json({ message: "Failed to fetch browse events" });
