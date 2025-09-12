@@ -21,7 +21,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, ne, sql, desc, asc, gte, lte, between, gt, inArray } from "drizzle-orm";
-import { zonedTimeToUtc, utcToZonedTime, format } from 'date-fns-tz';
+import { fromZonedTime, toZonedTime, formatInTimeZone } from 'date-fns-tz';
 
 // Interface for storage operations
 export interface IStorage {
@@ -511,7 +511,7 @@ export class DatabaseStorage implements IStorage {
       // Combine date and time into a datetime string
       const localDateTimeStr = `${event.date}T${event.time}`;
       // Convert local time to UTC using the event's timezone
-      utcDateTime = zonedTimeToUtc(localDateTimeStr, event.timezone);
+      utcDateTime = fromZonedTime(localDateTimeStr, event.timezone);
     }
 
     const [newEvent] = await db
@@ -581,7 +581,7 @@ export class DatabaseStorage implements IStorage {
     let utcDateTime: Date | null = null;
     if (eventData.date && eventData.time) {
       const localDateTimeStr = `${eventData.date}T${eventData.time}`;
-      utcDateTime = zonedTimeToUtc(localDateTimeStr, timezone);
+      utcDateTime = fromZonedTime(localDateTimeStr, timezone);
     }
     
     const eventToInsert = {
@@ -637,7 +637,7 @@ export class DatabaseStorage implements IStorage {
         
         if (date && time) {
           const localDateTimeStr = `${date}T${time}`;
-          utcDateTime = zonedTimeToUtc(localDateTimeStr, timezone);
+          utcDateTime = fromZonedTime(localDateTimeStr, timezone);
         }
       }
     }

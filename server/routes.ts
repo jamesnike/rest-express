@@ -9,6 +9,7 @@ import OpenAI from "openai";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { userCache, eventCache, messageCache, invalidateUserCaches, invalidateEventCaches } from "./cache";
+import { toZonedTime, formatInTimeZone } from 'date-fns-tz';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth setup
@@ -34,6 +35,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const timeFilter = req.query.timeFilter as string | undefined;
       const specificDate = req.query.date as string | undefined;  // e.g., "2025-09-15"
       const timePeriod = req.query.timePeriod as string | undefined;  // "AM", "PM", or "Night"
+      const timezone = (req.query.timezone as string) || "UTC";  // Default to UTC if not provided
       
       // Parse and sanitize pagination parameters
       let limit = req.query.limit ? parseInt(req.query.limit as string) : 20; // Default 20 for mobile efficiency
