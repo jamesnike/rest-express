@@ -287,7 +287,7 @@ export class DatabaseStorage implements IStorage {
     }) as any);
   }
 
-  async getEventsByDateRange(startDate: string, endDate: string, category?: string, timeFilter?: string, limit = 100, timezoneOffset = 0): Promise<EventWithOrganizer[]> {
+  async getEventsByDateRange(startDate: string, endDate: string, category?: string, timeFilter?: string, limit = 100, offset = 0, timezoneOffset = 0): Promise<EventWithOrganizer[]> {
     // Build WHERE conditions for date range filtering
     const whereConditions = [
       eq(events.isActive, true),
@@ -359,7 +359,8 @@ export class DatabaseStorage implements IStorage {
       .where(and(...whereConditions))
       .groupBy(events.id, users.id)
       .orderBy(asc(events.date), asc(events.time))
-      .limit(limit);
+      .limit(limit)
+      .offset(offset);
 
     const results = await query;
     return results.map(result => ({
@@ -369,6 +370,32 @@ export class DatabaseStorage implements IStorage {
       userRsvpStatus: result.userRsvpStatus || undefined,
       isPrivateChat: result.isPrivateChat ? true : undefined,
     }) as any);
+  }
+
+  async getEventCountByDateRange(startDate: string, endDate: string, category?: string, timeFilter?: string, timezoneOffset = 0): Promise<number> {
+    // Build WHERE conditions for date range filtering
+    const whereConditions = [
+      eq(events.isActive, true),
+      // Always exclude private chats from public event listings
+      or(
+        eq(events.isPrivateChat, false),
+        sql`${events.isPrivateChat} IS NULL`
+      ),
+      // Date range filtering - events between startDate and endDate (inclusive)
+      gte(events.date, startDate),
+      lte(events.date, endDate),
+      category ? eq(events.category, category) : undefined,
+      ...(timeFilter ? this.getTimeFilterWhere(timeFilter, timezoneOffset) : []),
+    ].filter(Boolean);
+
+    const result = await db
+      .select({
+        count: sql<number>`COUNT(*)::int`,
+      })
+      .from(events)
+      .where(and(...whereConditions));
+    
+    return result[0]?.count || 0;
   }
 
   async getEvent(id: number, userId?: string): Promise<EventWithOrganizer | undefined> {
