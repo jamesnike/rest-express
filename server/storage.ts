@@ -21,6 +21,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, ne, sql, desc, asc, gte, lte, between, gt, inArray } from "drizzle-orm";
+import { zonedTimeToUtc, utcToZonedTime, format } from 'date-fns-tz';
 
 // Interface for storage operations
 export interface IStorage {
@@ -256,6 +257,8 @@ export class DatabaseStorage implements IStorage {
         subCategory: events.subCategory,
         date: events.date,
         time: events.time,
+        timezone: events.timezone,
+        utcDateTime: events.utcDateTime,
         location: events.location,
         latitude: events.latitude,
         longitude: events.longitude,
@@ -341,6 +344,8 @@ export class DatabaseStorage implements IStorage {
         subCategory: events.subCategory,
         date: events.date,
         time: events.time,
+        timezone: events.timezone,
+        utcDateTime: events.utcDateTime,
         location: events.location,
         latitude: events.latitude,
         longitude: events.longitude,
@@ -438,6 +443,8 @@ export class DatabaseStorage implements IStorage {
         subCategory: events.subCategory,
         date: events.date,
         time: events.time,
+        timezone: events.timezone,
+        utcDateTime: events.utcDateTime,
         location: events.location,
         latitude: events.latitude,
         longitude: events.longitude,
@@ -498,9 +505,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createEvent(event: InsertEvent): Promise<Event> {
+    // Calculate UTC datetime if date, time, and timezone are provided
+    let utcDateTime: Date | null = null;
+    if (event.date && event.time && event.timezone) {
+      // Combine date and time into a datetime string
+      const localDateTimeStr = `${event.date}T${event.time}`;
+      // Convert local time to UTC using the event's timezone
+      utcDateTime = zonedTimeToUtc(localDateTimeStr, event.timezone);
+    }
+
     const [newEvent] = await db
       .insert(events)
-      .values(event)
+      .values({
+        ...event,
+        utcDateTime: utcDateTime || undefined,
+      })
       .returning();
     return newEvent;
   }
@@ -555,12 +574,24 @@ export class DatabaseStorage implements IStorage {
     }
 
     // Create the event with the organizer
+    // Default to PST if no timezone provided (since current events are in PST)
+    const timezone = eventData.timezone || "America/Los_Angeles";
+    
+    // Calculate UTC datetime
+    let utcDateTime: Date | null = null;
+    if (eventData.date && eventData.time) {
+      const localDateTimeStr = `${eventData.date}T${eventData.time}`;
+      utcDateTime = zonedTimeToUtc(localDateTimeStr, timezone);
+    }
+    
     const eventToInsert = {
       title: eventData.title,
       description: eventData.description,
       category: eventData.category,
       date: eventData.date,
       time: eventData.time,
+      timezone,
+      utcDateTime: utcDateTime || undefined,
       location: eventData.location,
       organizerId,
       latitude: eventData.latitude,
@@ -589,9 +620,40 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateEvent(id: number, event: Partial<InsertEvent>): Promise<Event> {
+    // If date, time, or timezone changed, recalculate UTC datetime
+    let utcDateTime: Date | null = null;
+    if ((event.date || event.time || event.timezone)) {
+      // Get the existing event first to merge values
+      const [existingEvent] = await db
+        .select()
+        .from(events)
+        .where(eq(events.id, id))
+        .limit(1);
+      
+      if (existingEvent) {
+        const date = event.date || existingEvent.date;
+        const time = event.time || existingEvent.time;
+        const timezone = event.timezone || existingEvent.timezone || "America/Los_Angeles";
+        
+        if (date && time) {
+          const localDateTimeStr = `${date}T${time}`;
+          utcDateTime = zonedTimeToUtc(localDateTimeStr, timezone);
+        }
+      }
+    }
+
+    const updateData: any = {
+      ...event,
+      updatedAt: new Date()
+    };
+    
+    if (utcDateTime) {
+      updateData.utcDateTime = utcDateTime;
+    }
+
     const [updatedEvent] = await db
       .update(events)
-      .set({ ...event, updatedAt: new Date() })
+      .set(updateData)
       .where(eq(events.id, id))
       .returning();
     return updatedEvent;
@@ -620,6 +682,8 @@ export class DatabaseStorage implements IStorage {
           subCategory: events.subCategory,
           date: events.date,
           time: events.time,
+          timezone: events.timezone,
+          utcDateTime: events.utcDateTime,
           location: events.location,
           latitude: events.latitude,
           longitude: events.longitude,
@@ -699,6 +763,8 @@ export class DatabaseStorage implements IStorage {
           subCategory: events.subCategory,
           date: events.date,
           time: events.time,
+          timezone: events.timezone,
+          utcDateTime: events.utcDateTime,
           location: events.location,
           latitude: events.latitude,
           longitude: events.longitude,
@@ -1377,6 +1443,8 @@ export class DatabaseStorage implements IStorage {
         subCategory: events.subCategory,
         date: events.date,
         time: events.time,
+        timezone: events.timezone,
+        utcDateTime: events.utcDateTime,
         location: events.location,
         latitude: events.latitude,
         longitude: events.longitude,
@@ -1499,6 +1567,8 @@ export class DatabaseStorage implements IStorage {
         subCategory: events.subCategory,
         date: events.date,
         time: events.time,
+        timezone: events.timezone,
+        utcDateTime: events.utcDateTime,
         location: events.location,
         latitude: events.latitude,
         longitude: events.longitude,
@@ -1611,6 +1681,8 @@ export class DatabaseStorage implements IStorage {
         description: events.description,
         date: events.date,
         time: events.time,
+        timezone: events.timezone,
+        utcDateTime: events.utcDateTime,
         location: events.location,
         category: events.category,
         subCategory: events.subCategory,
