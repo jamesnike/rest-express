@@ -31,7 +31,8 @@ export interface IStorage {
   
   // Event operations
   getEvents(userId?: string, category?: string, timeFilter?: string, limit?: number, excludePastEvents?: boolean, timezoneOffset?: number): Promise<EventWithOrganizer[]>;
-  getEventsByDateRange(startDate: string, endDate: string, category?: string, timeFilter?: string, limit?: number, timezoneOffset?: number): Promise<EventWithOrganizer[]>;
+  getEventsByDateRange(startDate: string, endDate: string, category?: string, timeFilter?: string, timePeriod?: string, limit?: number, offset?: number, timezoneOffset?: number): Promise<EventWithOrganizer[]>;
+  getEventCountByDateRange(startDate: string, endDate: string, category?: string, timeFilter?: string, timePeriod?: string, timezoneOffset?: number): Promise<number>;
   getEvent(id: number, userId?: string): Promise<EventWithOrganizer | undefined>;
   createEvent(event: InsertEvent): Promise<Event>;
   createExternalEvent(event: { title: string; description: string; category: string; date: string; time: string; location: string; organizerEmail?: string; source?: string; sourceUrl?: string; latitude?: string; longitude?: string; price?: string; isFree?: boolean; eventImageUrl?: string; [key: string]: any }): Promise<Event>;
@@ -176,6 +177,33 @@ export class DatabaseStorage implements IStorage {
     ];
   }
 
+  // Helper function to get WHERE conditions for time period filtering (AM/PM/Night)
+  private getTimePeriodWhere(timePeriod: string) {
+    let startTime: string, endTime: string;
+    
+    switch (timePeriod.toUpperCase()) {
+      case 'AM':
+        startTime = '06:00:00';  // 6:00am to 11:59am
+        endTime = '11:59:59';
+        break;
+      case 'PM':
+        startTime = '12:00:00';  // 12:00pm to 5:59pm
+        endTime = '17:59:59';
+        break;
+      case 'NIGHT':
+        startTime = '18:00:00';  // 6:00pm to 11:59pm
+        endTime = '23:59:59';
+        break;
+      default:
+        return [];
+    }
+    
+    return [
+      gte(events.time, startTime),
+      lte(events.time, endTime)
+    ];
+  }
+
   // Event operations
   async getEvents(userId?: string, category?: string, timeFilter?: string, limit = 20, excludePastEvents = false, timezoneOffset = 0): Promise<EventWithOrganizer[]> {
     // Get user's skipped events if userId is provided
@@ -287,7 +315,7 @@ export class DatabaseStorage implements IStorage {
     }) as any);
   }
 
-  async getEventsByDateRange(startDate: string, endDate: string, category?: string, timeFilter?: string, limit = 100, offset = 0, timezoneOffset = 0): Promise<EventWithOrganizer[]> {
+  async getEventsByDateRange(startDate: string, endDate: string, category?: string, timeFilter?: string, timePeriod?: string, limit = 100, offset = 0, timezoneOffset = 0): Promise<EventWithOrganizer[]> {
     // Build WHERE conditions for date range filtering
     const whereConditions = [
       eq(events.isActive, true),
@@ -301,6 +329,7 @@ export class DatabaseStorage implements IStorage {
       lte(events.date, endDate),
       category ? eq(events.category, category) : undefined,
       ...(timeFilter ? this.getTimeFilterWhere(timeFilter, timezoneOffset) : []),
+      ...(timePeriod ? this.getTimePeriodWhere(timePeriod) : []),
     ].filter(Boolean);
 
     const query = db
@@ -372,7 +401,7 @@ export class DatabaseStorage implements IStorage {
     }) as any);
   }
 
-  async getEventCountByDateRange(startDate: string, endDate: string, category?: string, timeFilter?: string, timezoneOffset = 0): Promise<number> {
+  async getEventCountByDateRange(startDate: string, endDate: string, category?: string, timeFilter?: string, timePeriod?: string, timezoneOffset = 0): Promise<number> {
     // Build WHERE conditions for date range filtering
     const whereConditions = [
       eq(events.isActive, true),
@@ -386,6 +415,7 @@ export class DatabaseStorage implements IStorage {
       lte(events.date, endDate),
       category ? eq(events.category, category) : undefined,
       ...(timeFilter ? this.getTimeFilterWhere(timeFilter, timezoneOffset) : []),
+      ...(timePeriod ? this.getTimePeriodWhere(timePeriod) : []),
     ].filter(Boolean);
 
     const result = await db
