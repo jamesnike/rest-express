@@ -992,6 +992,136 @@ Please respond with just the signature text, nothing else.`;
     }
   });
 
+  // Friend management routes
+  app.post('/api/friends/request', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { friendId } = req.body;
+      
+      if (!friendId) {
+        return res.status(400).json({ message: "Friend ID is required" });
+      }
+      
+      if (userId === friendId) {
+        return res.status(400).json({ message: "Cannot send friend request to yourself" });
+      }
+      
+      // Check if the friend user exists
+      const friendUser = await storage.getUser(friendId);
+      if (!friendUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const friendship = await storage.sendFriendRequest(userId, friendId);
+      res.status(201).json(friendship);
+    } catch (error: any) {
+      console.error("Error sending friend request:", error);
+      if (error.message.includes("Friendship already exists")) {
+        return res.status(400).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Failed to send friend request" });
+    }
+  });
+
+  app.post('/api/friends/accept', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { friendId } = req.body;
+      
+      if (!friendId) {
+        return res.status(400).json({ message: "Friend ID is required" });
+      }
+      
+      const friendship = await storage.acceptFriendRequest(userId, friendId);
+      res.json(friendship);
+    } catch (error: any) {
+      console.error("Error accepting friend request:", error);
+      if (error.message === "No pending friend request found") {
+        return res.status(404).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Failed to accept friend request" });
+    }
+  });
+
+  app.post('/api/friends/reject', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { friendId } = req.body;
+      
+      if (!friendId) {
+        return res.status(400).json({ message: "Friend ID is required" });
+      }
+      
+      const friendship = await storage.rejectFriendRequest(userId, friendId);
+      res.json(friendship);
+    } catch (error: any) {
+      console.error("Error rejecting friend request:", error);
+      if (error.message === "No pending friend request found") {
+        return res.status(404).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Failed to reject friend request" });
+    }
+  });
+
+  app.delete('/api/friends/:friendId', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const friendId = req.params.friendId;
+      
+      await storage.removeFriend(userId, friendId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error removing friend:", error);
+      res.status(500).json({ message: "Failed to remove friend" });
+    }
+  });
+
+  app.get('/api/friends', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const friends = await storage.getFriends(userId);
+      res.json(friends);
+    } catch (error) {
+      console.error("Error fetching friends:", error);
+      res.status(500).json({ message: "Failed to fetch friends" });
+    }
+  });
+
+  app.get('/api/friends/requests/pending', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const requests = await storage.getPendingFriendRequests(userId);
+      res.json(requests);
+    } catch (error) {
+      console.error("Error fetching pending friend requests:", error);
+      res.status(500).json({ message: "Failed to fetch pending friend requests" });
+    }
+  });
+
+  app.get('/api/friends/requests/sent', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const requests = await storage.getSentFriendRequests(userId);
+      res.json(requests);
+    } catch (error) {
+      console.error("Error fetching sent friend requests:", error);
+      res.status(500).json({ message: "Failed to fetch sent friend requests" });
+    }
+  });
+
+  app.get('/api/friends/status/:friendId', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const friendId = req.params.friendId;
+      
+      const status = await storage.checkFriendshipStatus(userId, friendId);
+      res.json({ status: status || 'none' });
+    } catch (error) {
+      console.error("Error checking friendship status:", error);
+      res.status(500).json({ message: "Failed to check friendship status" });
+    }
+  });
+
   // Notification endpoints
   app.get('/api/notifications/unread', requireAuth, async (req: any, res) => {
     try {
