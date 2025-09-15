@@ -231,6 +231,9 @@ export const externalEventSchema = createInsertSchema(events).omit({
 export const insertRsvpSchema = createInsertSchema(eventRsvps).omit({
   id: true,
   createdAt: true,
+}).extend({
+  // Enforce valid RSVP statuses only
+  status: z.enum(['attending', 'going', 'maybe', 'not_going'])
 });
 
 export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
