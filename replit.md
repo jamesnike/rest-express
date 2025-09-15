@@ -29,6 +29,7 @@ Preferred communication style: Simple, everyday language.
 - **AI Customer Service**: Voice-enabled AI assistant with Inworld TTS and browser Speech Recognition. Features speech-to-text input, text-to-speech output, voice toggle controls, and event-specific knowledge for answering user questions about event details, location, pricing, and more.
 - **Event Discovery**: Features a Bumble-style swipe interface for event discovery, a dedicated browse page with category and time filters, and a "Similar Events" tab.
 - **Mobile Development**: Integrated with Capacitor for native Android and iOS app deployment, utilizing core mobile plugins like geolocation, camera, and push notifications.
+- **Friend System**: Complete friend management with database schema (friendships table) and full CRUD operations. Features include send/accept/reject friend requests with status tracking (pending/accepted/rejected), get friends list and pending requests (incoming and outgoing), check friendship status between users, remove friends functionality, all endpoints require JWT authentication, and bidirectional relationship support.
 
 ## External Dependencies
 - **Database**: Neon PostgreSQL (serverless) with Drizzle Kit for schema management.
@@ -55,6 +56,20 @@ Additional documentation includes:
 - `mobile-group-chat-integration.md` - Step-by-step mobile integration guide for connecting to EventConnect Replit server's Group Chat functionality with code examples, error handling, and testing procedures
 
 ## Recent Changes
+### 2025-09-15 - Friend System Implementation
+- Implemented complete friend management system:
+  - Added friendships table to database schema with pending/accepted/rejected status
+  - Created storage functions for all friend operations (send/accept/reject requests, get friends list, etc.)
+  - Added 8 new API endpoints for friend management, all requiring JWT authentication
+  - Implemented bidirectional friendship support (friendship works both ways)
+  - Tested all friend functionality successfully with comprehensive test script
+- Friend system enables users to:
+  - Send friend requests to other users
+  - Accept or reject incoming friend requests
+  - View their friends list
+  - Check pending friend requests (incoming and outgoing)
+  - Remove existing friends
+  - Check friendship status with any user
 ### 2025-02-11 - JWT Authentication System Implementation
 - Successfully converted from Replit Auth to JWT authentication for mobile app compatibility:
   - Implemented JWT login endpoint (`/api/auth/login`) that works with existing and new users
