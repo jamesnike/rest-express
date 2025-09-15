@@ -43,6 +43,10 @@ export const users = pgTable("users", {
   aiSignature: text("ai_signature"), // AI-generated user signature
   skippedEvents: integer("skipped_events").array().default([]), // Array of skipped event IDs
   eventsShownSinceSkip: integer("events_shown_since_skip").default(0), // Counter for events shown since last skip
+  // OAuth provider fields
+  authProvider: varchar("auth_provider", { length: 50 }).default("local"), // local, google, facebook
+  googleId: varchar("google_id").unique(), // Google OAuth ID
+  facebookId: varchar("facebook_id").unique(), // Facebook OAuth ID
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -225,6 +229,9 @@ export const upsertUserSchema = createInsertSchema(users).pick({
   interests: true,
   personality: true,
   aiSignature: true,
+  authProvider: true,
+  googleId: true,
+  facebookId: true,
 });
 
 export const insertEventSchema = createInsertSchema(events).omit({
