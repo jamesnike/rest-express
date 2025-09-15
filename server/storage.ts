@@ -2090,36 +2090,39 @@ export class DatabaseStorage implements IStorage {
 
   async getFriends(userId: string): Promise<User[]> {
     // Get all accepted friendships where user is either sender or receiver
-    const friendshipsData = await db
+    const friendsAsUser = await db
       .select({
-        friendship: friendships,
-        user: users,
         friend: users,
       })
       .from(friendships)
-      .leftJoin(users, eq(friendships.userId, users.id))
-      .leftJoin(users, eq(friendships.friendId, users.id))
+      .innerJoin(users, eq(friendships.friendId, users.id))
       .where(
         and(
-          or(
-            eq(friendships.userId, userId),
-            eq(friendships.friendId, userId)
-          ),
+          eq(friendships.userId, userId),
           eq(friendships.status, 'accepted')
         )
       );
     
-    // Extract the friend user data
-    const friends: User[] = [];
-    friendshipsData.forEach(row => {
-      if (row.friendship.userId === userId && row.friend) {
-        friends.push(row.friend);
-      } else if (row.friendship.friendId === userId && row.user) {
-        friends.push(row.user);
-      }
-    });
+    const friendsAsFriend = await db
+      .select({
+        friend: users,
+      })
+      .from(friendships)
+      .innerJoin(users, eq(friendships.userId, users.id))
+      .where(
+        and(
+          eq(friendships.friendId, userId),
+          eq(friendships.status, 'accepted')
+        )
+      );
     
-    return friends;
+    // Combine both results
+    const allFriends = [
+      ...friendsAsUser.map(r => r.friend),
+      ...friendsAsFriend.map(r => r.friend)
+    ];
+    
+    return allFriends;
   }
 
   async getPendingFriendRequests(userId: string): Promise<Array<Friendship & { user: User }>> {
