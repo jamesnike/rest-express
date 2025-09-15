@@ -195,6 +195,24 @@ export const savedEventRelations = relations(savedEvents, ({ one }) => ({
   event: one(events, { fields: [savedEvents.eventId], references: [events.id] }),
 }));
 
+// Friendships table for managing friend relationships
+export const friendships = pgTable("friendships", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }), // User who sent the friend request
+  friendId: text("friend_id").notNull().references(() => users.id, { onDelete: "cascade" }), // User who received the friend request
+  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, accepted, rejected, blocked
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  // Ensure unique friendship relationships (no duplicate requests)
+  userFriendUnique: unique().on(table.userId, table.friendId),
+}));
+
+export const friendshipRelations = relations(friendships, ({ one }) => ({
+  user: one(users, { fields: [friendships.userId], references: [users.id] }),
+  friend: one(users, { fields: [friendships.friendId], references: [users.id] }),
+}));
+
 // Zod schemas
 export const upsertUserSchema = createInsertSchema(users).pick({
   id: true,
@@ -258,6 +276,15 @@ export const insertSavedEventSchema = createInsertSchema(savedEvents).omit({
   createdAt: true,
 });
 
+export const insertFriendshipSchema = createInsertSchema(friendships).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  // Enforce valid friendship statuses
+  status: z.enum(['pending', 'accepted', 'rejected', 'blocked']).optional()
+});
+
 // Types
 export type UpsertUser = z.infer<typeof upsertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -289,3 +316,5 @@ export type MessageFavorite = typeof messageFavorites.$inferSelect;
 export type InsertMessageFavorite = z.infer<typeof insertMessageFavoriteSchema>;
 export type SavedEvent = typeof savedEvents.$inferSelect;
 export type InsertSavedEvent = z.infer<typeof insertSavedEventSchema>;
+export type Friendship = typeof friendships.$inferSelect;
+export type InsertFriendship = z.infer<typeof insertFriendshipSchema>;
