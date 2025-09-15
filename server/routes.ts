@@ -27,6 +27,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get basic user info by ID - public endpoint for viewing other users
+  app.get('/api/users/:userId', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.params.userId;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Return only basic/public information
+      const publicUserInfo = {
+        id: user.id,
+        name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Anonymous',
+        firstName: user.firstName,
+        lastName: user.lastName,
+        profileImageUrl: user.profileImageUrl,
+        interests: user.interests,
+        personality: user.personality,
+        aiSignature: user.aiSignature,
+        createdAt: user.createdAt
+      };
+      
+      res.json(publicUserInfo);
+    } catch (error) {
+      console.error("Error fetching user info:", error);
+      res.status(500).json({ message: "Failed to fetch user info" });
+    }
+  });
+
   // Event routes
   // Browse events route - shows events for next 7 days or specific date/time without filtering skipped ones (must be before /api/events/:id)
   app.get('/api/events/browse', async (req, res) => {
