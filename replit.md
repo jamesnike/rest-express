@@ -56,6 +56,17 @@ Additional documentation includes:
 - `mobile-group-chat-integration.md` - Step-by-step mobile integration guide for connecting to EventConnect Replit server's Group Chat functionality with code examples, error handling, and testing procedures
 
 ## Recent Changes
+### 2025-09-16 - Private Chat API Routes Fixed
+- Fixed private chat API routes returning HTML instead of JSON:
+  - Added new routes matching client expectations: `/api/chats/private` (previously was `/api/private-chats`)
+  - Implemented POST `/api/chats/private` for creating private chats with proper response format
+  - Implemented GET `/api/chats/private` for listing all private chats with formatted user details
+  - Added message routes: GET/POST `/api/chats/private/:chatId/messages`
+  - Added mark as read route: PUT `/api/chats/private/:chatId/read`
+  - Added delete chat route: DELETE `/api/chats/private/:chatId`
+  - Maintained backward compatibility with old `/api/private-chats` routes
+  - Fixed TypeScript errors by using correct storage interface methods
+
 ### 2025-09-15 - Friend System Implementation
 - Implemented complete friend management system:
   - Added friendships table to database schema with pending/accepted/rejected status
