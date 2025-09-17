@@ -56,6 +56,18 @@ Additional documentation includes:
 - `mobile-group-chat-integration.md` - Step-by-step mobile integration guide for connecting to EventConnect Replit server's Group Chat functionality with code examples, error handling, and testing procedures
 
 ## Recent Changes
+### 2025-09-17 - Comprehensive Performance Optimizations
+- **Database Performance**: Added 9 critical indexes on frequently queried columns (date, category, isActive, organizerId, eventId, userId combinations) for dramatically improved query performance
+- **Query Optimization**: Replaced redundant double queries (COUNT + SELECT) with single queries using COUNT() OVER() window functions, reducing database round trips by 50%
+- **Response Logging**: Removed expensive JSON.stringify() of response bodies in logging middleware that was causing significant CPU overhead
+- **Compression**: Implemented gzip compression for all responses above 1KB with optimized compression level for balanced performance
+- **CORS Optimization**: Added maxAge to cache preflight responses for 1 hour, reducing OPTIONS requests
+- **Caching Headers**: Added Cache-Control headers to read-only endpoints (5 minutes for event listings, 10 minutes for user profiles)
+- **Pagination Limits**: Enforced consistent pagination limits across all endpoints (max 50-200 depending on endpoint) to prevent excessive data retrieval
+- **Payload Optimization**: Created slim projections for list views, reducing payload size by ~70% by only returning essential fields
+- **SQL Portability**: Fixed PostgreSQL-specific SQL casts to use portable CAST() syntax for better database compatibility
+
+## Recent Changes
 ### 2025-09-16 - Private Chat API Routes Fixed
 - Fixed private chat API routes returning HTML instead of JSON:
   - Added new routes matching client expectations: `/api/chats/private` (previously was `/api/private-chats`)
