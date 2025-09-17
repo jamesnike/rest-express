@@ -39,6 +39,8 @@ export interface IStorage {
   getEventCountByDateRange(startDate: string, endDate: string, category?: string, timeFilter?: string, timePeriod?: string, timezoneOffset?: number): Promise<number>;
   // Optimized method that gets events and count in single query
   getEventsByDateRangeWithCount(startDate: string, endDate: string, category?: string, timeFilter?: string, timePeriod?: string, limit?: number, offset?: number, timezoneOffset?: number): Promise<{ events: EventWithOrganizer[], total: number }>;
+  // Optimized slim projection for list views
+  getEventsByDateRangeSlim(startDate: string, endDate: string, category?: string, timeFilter?: string, timePeriod?: string, limit?: number, offset?: number, timezoneOffset?: number): Promise<{ events: any[], total: number }>;
   getEvent(id: number, userId?: string): Promise<EventWithOrganizer | undefined>;
   createEvent(event: InsertEvent): Promise<Event>;
   createExternalEvent(event: { title: string; description: string; category: string; date: string; time: string; location: string; organizerEmail?: string; source?: string; sourceUrl?: string; latitude?: string; longitude?: string; price?: string; isFree?: boolean; eventImageUrl?: string; [key: string]: any }): Promise<Event>;
@@ -440,7 +442,7 @@ export class DatabaseStorage implements IStorage {
 
     const result = await db
       .select({
-        count: sql<number>`COUNT(*)::int`,
+        count: sql<number>`CAST(COUNT(*) AS INTEGER)`,
       })
       .from(events)
       .where(and(...whereConditions));
@@ -449,6 +451,68 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Optimized method that gets both events and total count in a single query using window functions
+  // Optimized slim projection for list views - returns only essential fields
+  async getEventsByDateRangeSlim(startDate: string, endDate: string, category?: string, timeFilter?: string, timePeriod?: string, limit = 100, offset = 0, timezoneOffset = 0): Promise<{ events: any[], total: number }> {
+    // Build WHERE conditions for date range filtering
+    const whereConditions = [
+      eq(events.isActive, true),
+      // Always exclude private chats from public event listings
+      or(
+        eq(events.isPrivateChat, false),
+        sql`${events.isPrivateChat} IS NULL`
+      ),
+      // Date range filtering - events between startDate and endDate (inclusive)
+      gte(events.date, startDate),
+      lte(events.date, endDate),
+      category ? eq(events.category, category) : undefined,
+      ...(timeFilter ? this.getTimeFilterWhere(timeFilter, timezoneOffset) : []),
+      ...(timePeriod ? this.getTimePeriodWhere(timePeriod) : []),
+    ].filter(Boolean);
+
+    // Single query to get both events and total count using window functions
+    // Only select essential fields for list views (reduced payload size)
+    const results = await db
+      .select({
+        // Essential event fields only
+        id: events.id,
+        title: events.title,
+        category: events.category,
+        date: events.date,
+        time: events.time,
+        location: events.location,
+        price: events.price,
+        isFree: events.isFree,
+        eventImageUrl: events.eventImageUrl,
+        maxAttendees: events.maxAttendees,
+        // Essential organizer info only
+        organizerId: events.organizerId,
+        organizerName: sql<string>`COALESCE(${users.firstName} || ' ' || ${users.lastName}, ${users.email})`,
+        organizerImage: users.profileImageUrl,
+        // RSVP count - using CAST for portability
+        rsvpCount: sql<number>`CAST((SELECT COUNT(*) FROM event_rsvps WHERE event_id = ${events.id} AND status IN ('attending', 'going')) AS INTEGER)`,
+        // Total count using window function - using CAST for portability
+        totalCount: sql<number>`CAST(COUNT(*) OVER() AS INTEGER)`
+      })
+      .from(events)
+      .leftJoin(users, eq(events.organizerId, users.id))
+      .where(and(...whereConditions))
+      .orderBy(desc(events.date), desc(events.time))
+      .limit(limit)
+      .offset(offset);
+
+    if (results.length === 0) {
+      return { events: [], total: 0 };
+    }
+
+    // Extract total from first result
+    const total = results[0].totalCount || 0;
+
+    // Map results removing totalCount from each item
+    const eventList = results.map(({ totalCount, ...event }) => event);
+
+    return { events: eventList, total };
+  }
+
   async getEventsByDateRangeWithCount(startDate: string, endDate: string, category?: string, timeFilter?: string, timePeriod?: string, limit = 100, offset = 0, timezoneOffset = 0): Promise<{ events: EventWithOrganizer[], total: number }> {
     // Build WHERE conditions for date range filtering
     const whereConditions = [
@@ -521,10 +585,10 @@ export class DatabaseStorage implements IStorage {
           createdAt: users.createdAt,
           updatedAt: users.updatedAt,
         },
-        // Count using subquery for efficiency  
-        rsvpCount: sql<number>`(SELECT COUNT(*)::int FROM event_rsvps WHERE event_id = ${events.id} AND status IN ('attending', 'going'))`,
-        // Total count using window function - this runs once for the entire result set
-        totalCount: sql<number>`COUNT(*) OVER()::int`
+        // Count using subquery for efficiency - using CAST for portability
+        rsvpCount: sql<number>`CAST((SELECT COUNT(*) FROM event_rsvps WHERE event_id = ${events.id} AND status IN ('attending', 'going')) AS INTEGER)`,
+        // Total count using window function - using CAST for portability
+        totalCount: sql<number>`CAST(COUNT(*) OVER() AS INTEGER)`
       })
       .from(events)
       .leftJoin(users, eq(events.organizerId, users.id))

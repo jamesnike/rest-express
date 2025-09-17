@@ -6,13 +6,13 @@ import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
 
-// Enable gzip/brotli compression for all responses
+// Enable gzip compression for all responses
 // This must be early in the middleware stack to compress all responses
 app.use(compression({
   // Enable compression for all responses above 1kb
   threshold: 1024,
-  // Use maximum compression level in production (6 is default, 9 is max)
-  level: process.env.NODE_ENV === 'production' ? 9 : 6
+  // Use balanced compression level for better latency (6 gives good compression with lower CPU overhead)
+  level: 6
 }));
 
 // Optimized CORS configuration to reduce preflight requests

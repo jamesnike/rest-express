@@ -109,8 +109,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         endDate = endDateObj.toISOString().split('T')[0]; // 7 days from now in YYYY-MM-DD format
       }
       
-      // Get events and total count in a single optimized query
-      const { events, total } = await storage.getEventsByDateRangeWithCount(
+      // Get events with slim projection for better performance (reduced payload size)
+      const { events, total } = await storage.getEventsByDateRangeSlim(
         startDate, endDate, category, timeFilter, timePeriod, limit, offset, timezoneOffset
       );
       
