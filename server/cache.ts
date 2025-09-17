@@ -334,24 +334,14 @@ export const eventCache = new SimpleCache<any>(CACHE_TTL.EVENT);
 export const messageCache = new SimpleCache<any>(CACHE_TTL.MESSAGE);
 export const eventMembersCache = new SimpleCache<number[]>(CACHE_TTL.SHORT);
 
-// Legacy memoized functions for backward compatibility
-export const memoizedGetUserEventIds = memoize(
-  async (getUserEventIds: Function, userId: string) => {
-    return await getUserEventIds(userId);
-  },
-  {
-    maxAge: CACHE_TTL.SHORT,
-    primitive: true,
-    normalizer: (args) => args[1], // Only use userId for cache key
-  }
-);
+// Legacy memoized functions removed - using new cache system instead
 
 // Legacy helper functions for backward compatibility
 export function invalidateUserCaches(userId: string) {
   cache.invalidateUser(userId);
   userCache.delete(userId);
   eventMembersCache.invalidatePattern(`.*_${userId}`);
-  memoizedGetUserEventIds.clear();
+  // memoized function cleared - using new cache system
 }
 
 export function invalidateEventCaches(eventId: number) {
