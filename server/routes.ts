@@ -146,7 +146,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user?.claims?.sub;
       const category = req.query.category as string | undefined;
       const timeFilter = req.query.timeFilter as string | undefined;
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
+      // Enforce pagination limits for performance
+      let limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
+      if (isNaN(limit) || limit < 1) limit = 20;
+      if (limit > 50) limit = 50; // Max 50 for home page to ensure fast loads
       
       // For Home page, exclude past events
       const events = await storage.getEvents(userId, category, timeFilter, limit, true);
@@ -815,7 +818,10 @@ Please respond with just the signature text, nothing else.`;
     try {
       const chatId = parseInt(req.params.chatId);
       const userId = req.user.claims.sub;
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+      // Enforce pagination limits for messages
+      let limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+      if (isNaN(limit) || limit < 1) limit = 50;
+      if (limit > 100) limit = 100; // Max 100 messages at once
       const before = req.query.before ? new Date(req.query.before as string) : undefined;
       
       // Verify user has access to this private chat
@@ -935,7 +941,10 @@ Please respond with just the signature text, nothing else.`;
     try {
       const eventId = parseInt(req.params.id);
       const userId = req.user.claims.sub;
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 1000;
+      // Enforce reasonable pagination limit
+      let limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+      if (isNaN(limit) || limit < 1) limit = 100;
+      if (limit > 200) limit = 200; // Max 200 items for list endpoints
       
       // Check if event exists
       const event = await storage.getEvent(eventId, userId);
