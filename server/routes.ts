@@ -32,6 +32,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/users/:userId', requireAuth, async (req: any, res) => {
     try {
       const userId = req.params.userId;
+      
+      // Check cache first
+      const cacheKey = cacheKeys.user(userId);
+      const cachedUser = cache.get<any>('users', cacheKey);
+      if (cachedUser) {
+        res.setHeader('Cache-Control', 'public, max-age=600, stale-while-revalidate=120');
+        res.setHeader('X-Cache', 'HIT');
+        return res.json(cachedUser);
+      }
+      
+      // Cache miss - fetch from database
       const user = await storage.getUser(userId);
       
       if (!user) {
@@ -51,6 +62,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdAt: user.createdAt
       };
       
+      // Store in cache
+      cache.set('users', cacheKey, publicUserInfo);
+      
+      res.setHeader('Cache-Control', 'public, max-age=600, stale-while-revalidate=120');
+      res.setHeader('X-Cache', 'MISS');
       res.json(publicUserInfo);
     } catch (error) {
       console.error("Error fetching user info:", error);
@@ -259,6 +275,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       const event = await storage.createEvent(eventData);
+      
+      // Invalidate event caches after creation
+      cache.invalidate('eventLists');  // Invalidate all event lists
+      cache.invalidate('events');      // Invalidate individual event cache
+      
       res.status(201).json(event);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -349,6 +370,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const eventData = insertEventSchema.partial().parse(req.body);
       const updatedEvent = await storage.updateEvent(eventId, eventData);
       
+      // Invalidate event caches after update
+      cache.invalidate('eventLists');  // Invalidate all event lists
+      cache.invalidatePattern('events', `^${eventId}_`);  // Invalidate specific event cache
+      
       res.json(updatedEvent);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -371,6 +396,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       await storage.deleteEvent(eventId);
+      
+      // Invalidate event caches after deletion
+      cache.invalidate('eventLists');  // Invalidate all event lists
+      cache.invalidatePattern('events', `^${eventId}_`);  // Invalidate specific event cache
+      cache.invalidatePattern('attendees', `^${eventId}_`);  // Invalidate attendee cache
+      cache.invalidatePattern('messages', `^${eventId}_`);  // Invalidate message cache
+      
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting event:", error);
@@ -497,6 +529,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       
       await storage.deleteRsvp(eventId, userId);
+      
+      // Invalidate attendee cache after RSVP deletion
+      cache.invalidatePattern('attendees', `^${eventId}_`);
+      
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting RSVP:", error);
@@ -1119,6 +1155,10 @@ Please respond with just the signature text, nothing else.`;
       }
       
       await storage.deleteChatMessage(messageId, userId);
+      
+      // Invalidate message cache after deletion
+      cache.invalidatePattern('messages', `^${eventId}_`);
+      
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting chat message:", error);
