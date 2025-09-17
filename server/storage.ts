@@ -1153,8 +1153,8 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  // Chat operations
-  async getChatMessages(eventId: number, limit = 1000): Promise<ChatMessageWithUser[]> {
+  // Chat operations - optimized with pagination support
+  async getChatMessages(eventId: number, limit = 1000, offset = 0): Promise<ChatMessageWithUser[]> {
     const query = db
       .select({
         id: chatMessages.id,
@@ -1186,7 +1186,8 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(users, eq(chatMessages.userId, users.id))
       .where(eq(chatMessages.eventId, eventId))
       .orderBy(desc(chatMessages.createdAt))
-      .limit(limit);
+      .limit(limit)
+      .offset(offset);
 
     const results = await query;
     
