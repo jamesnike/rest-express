@@ -56,6 +56,16 @@ Additional documentation includes:
 - `mobile-group-chat-integration.md` - Step-by-step mobile integration guide for connecting to EventConnect Replit server's Group Chat functionality with code examples, error handling, and testing procedures
 
 ## Recent Changes
+### 2025-09-17 - Historical Message Fetching with Cursor-Based Pagination
+- **Cursor-Based Pagination**: Implemented composite cursor pagination using (createdAt, id) for deterministic and efficient historical message fetching
+- **Dedicated Historical Cache**: Created separate LRU cache for historical messages with 5-minute TTL to optimize repeated queries  
+- **API Endpoints**: Added `/api/events/:id/messages/history` and `/api/chats/private/:chatId/messages/history` for cursor-based historical fetching
+- **Message Search**: Implemented full-text search for historical messages with relevance scoring and cursor pagination
+- **Batch Fetching**: Added capability to fetch messages for multiple date ranges in parallel for timeline views
+- **Cache Invalidation**: Wired automatic cache invalidation on message create/delete operations to maintain data consistency
+- **Performance**: Cursor-based pagination provides O(1) lookup performance compared to O(n) for offset-based, crucial for large chat histories
+- **TypeScript Fixes**: Fixed user field consistency issues by adding authProvider, googleId, facebookId fields throughout chat queries
+
 ### 2025-09-17 - Comprehensive Performance Optimizations & Server-Side Caching
 - **Database Performance**: Added 9 critical indexes on frequently queried columns (date, category, isActive, organizerId, eventId, userId combinations) for dramatically improved query performance
 - **Query Optimization**: Replaced redundant double queries (COUNT + SELECT) with single queries using COUNT() OVER() window functions, reducing database round trips by 50%
