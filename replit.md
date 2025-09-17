@@ -56,7 +56,7 @@ Additional documentation includes:
 - `mobile-group-chat-integration.md` - Step-by-step mobile integration guide for connecting to EventConnect Replit server's Group Chat functionality with code examples, error handling, and testing procedures
 
 ## Recent Changes
-### 2025-09-17 - Comprehensive Performance Optimizations
+### 2025-09-17 - Comprehensive Performance Optimizations & Server-Side Caching
 - **Database Performance**: Added 9 critical indexes on frequently queried columns (date, category, isActive, organizerId, eventId, userId combinations) for dramatically improved query performance
 - **Query Optimization**: Replaced redundant double queries (COUNT + SELECT) with single queries using COUNT() OVER() window functions, reducing database round trips by 50%
 - **Response Logging**: Removed expensive JSON.stringify() of response bodies in logging middleware that was causing significant CPU overhead
@@ -66,6 +66,14 @@ Additional documentation includes:
 - **Pagination Limits**: Enforced consistent pagination limits across all endpoints (max 50-200 depending on endpoint) to prevent excessive data retrieval
 - **Payload Optimization**: Created slim projections for list views, reducing payload size by ~70% by only returning essential fields
 - **SQL Portability**: Fixed PostgreSQL-specific SQL casts to use portable CAST() syntax for better database compatibility
+- **In-Memory LRU Caching**: Implemented comprehensive server-side caching using lru-cache library with:
+  - Multiple cache layers: events (5min TTL), users (15min TTL), messages (30sec TTL), attendees (2min TTL)
+  - Intelligent cache key generation based on query parameters
+  - Cache invalidation on data mutations (create/update/delete operations)
+  - Cache hit/miss tracking via X-Cache headers for monitoring
+  - Max 500 entries per cache with automatic LRU eviction
+  - Pattern-based cache invalidation for fine-grained control
+  - Significant latency reduction for frequently accessed data
 
 ## Recent Changes
 ### 2025-09-16 - Private Chat API Routes Fixed

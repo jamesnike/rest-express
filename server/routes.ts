@@ -8,7 +8,6 @@ import { z } from "zod";
 import OpenAI from "openai";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
-import { userCache, eventCache, messageCache, invalidateUserCaches, invalidateEventCaches } from "./cache";
 import cache, { cacheKeys } from "./cache";
 import { toZonedTime, formatInTimeZone } from 'date-fns-tz';
 
@@ -199,7 +198,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const cacheKey = cacheKeys.homeEvents(userId, category, timeFilter, limit);
       const cachedEvents = cache.get<any[]>('eventLists', cacheKey);
       if (cachedEvents) {
-        res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=60');
+        res.setHeader('Cache-Control', 'private, max-age=300, stale-while-revalidate=60');
         res.setHeader('X-Cache', 'HIT');
         return res.json(cachedEvents);
       }
@@ -211,8 +210,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Store in cache
       cache.set('eventLists', cacheKey, events);
       
-      // Add cache headers for events endpoint - 5 minutes
-      res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=60');
+      // Add cache headers for events endpoint - 5 minutes (private for user-specific data)
+      res.setHeader('Cache-Control', 'private, max-age=300, stale-while-revalidate=60');
       res.setHeader('X-Cache', 'MISS');
       res.json(events);
     } catch (error) {
@@ -230,7 +229,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const cacheKey = cacheKeys.event(eventId, userId);
       const cachedEvent = cache.get<EventWithOrganizer>('events', cacheKey);
       if (cachedEvent) {
-        res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=60');
+        res.setHeader('Cache-Control', userId ? 'private, max-age=300, stale-while-revalidate=60' : 'public, max-age=300, stale-while-revalidate=60');
         res.setHeader('X-Cache', 'HIT');
         return res.json(cachedEvent);
       }
@@ -245,7 +244,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       cache.set('events', cacheKey, event);
       
       // Add cache headers for individual event - 5 minutes
-      res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=60');
+      res.setHeader('Cache-Control', userId ? 'private, max-age=300, stale-while-revalidate=60' : 'public, max-age=300, stale-while-revalidate=60');
       res.setHeader('X-Cache', 'MISS');
       res.json(event);
     } catch (error) {

@@ -1,5 +1,4 @@
 import { LRUCache } from 'lru-cache';
-import memoize from "memoizee";
 
 // Cache configuration
 const CACHE_CONFIG = {
