@@ -8,7 +8,8 @@ import { z } from "zod";
 import OpenAI from "openai";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
-import cache, { cacheKeys } from "./cache";
+import cache, { cacheKeys, eventCache } from "./cache";
+import chatCacheOps, { chatCacheKeys, chatCaches } from "./chatCache";
 import { toZonedTime, formatInTimeZone } from 'date-fns-tz';
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -276,8 +277,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const event = await storage.createEvent(eventData);
       
       // Invalidate event caches after creation
-      cache.invalidate('eventLists');  // Invalidate all event lists
-      cache.invalidate('events');      // Invalidate individual event cache
+      cache.invalidateEventLists();  // Invalidate all event lists
       
       res.status(201).json(event);
     } catch (error) {
@@ -370,8 +370,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedEvent = await storage.updateEvent(eventId, eventData);
       
       // Invalidate event caches after update
-      cache.invalidate('eventLists');  // Invalidate all event lists
-      cache.invalidatePattern('events', `^${eventId}_`);  // Invalidate specific event cache
+      cache.invalidateEventLists();  // Invalidate all event lists
+      cache.invalidateEvent(eventId);  // Invalidate specific event cache
       
       res.json(updatedEvent);
     } catch (error) {
@@ -397,10 +397,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deleteEvent(eventId);
       
       // Invalidate event caches after deletion
-      cache.invalidate('eventLists');  // Invalidate all event lists
-      cache.invalidatePattern('events', `^${eventId}_`);  // Invalidate specific event cache
-      cache.invalidatePattern('attendees', `^${eventId}_`);  // Invalidate attendee cache
-      cache.invalidatePattern('messages', `^${eventId}_`);  // Invalidate message cache
+      cache.invalidateEventLists();  // Invalidate all event lists
+      cache.invalidateEvent(eventId);  // Invalidate specific event cache
       
       res.status(204).send();
     } catch (error) {
@@ -530,7 +528,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deleteRsvp(eventId, userId);
       
       // Invalidate attendee cache after RSVP deletion
-      cache.invalidatePattern('attendees', `^${eventId}_`);
+      cache.invalidateEvent(eventId);
       
       res.status(204).send();
     } catch (error) {
@@ -842,7 +840,15 @@ Please respond with just the signature text, nothing else.`;
     try {
       const currentUserId = req.user.claims.sub;
       
-      // Get all private chats for this user
+      // Check cache first
+      const cacheKey = chatCacheKeys.privateChatList(currentUserId);
+      const cachedChats = chatCaches.privateChatList.get(cacheKey);
+      if (cachedChats) {
+        res.setHeader('X-Cache', 'HIT');
+        return res.json({ chats: cachedChats });
+      }
+      
+      // Cache miss - fetch from database
       const privateChats = await storage.getUserPrivateChats(currentUserId);
       
       // Format response as expected by client
@@ -871,6 +877,9 @@ Please respond with just the signature text, nothing else.`;
         };
       }));
       
+      // Store in cache
+      chatCaches.privateChatList.set(cacheKey, formattedChats);
+      res.setHeader('X-Cache', 'MISS');
       res.json({ chats: formattedChats });
     } catch (error) {
       console.error("Error fetching private chats:", error);
@@ -1156,7 +1165,7 @@ Please respond with just the signature text, nothing else.`;
       await storage.deleteChatMessage(messageId, userId);
       
       // Invalidate message cache after deletion
-      cache.invalidatePattern('messages', `^${eventId}_`);
+      cache.invalidateEvent(eventId);
       
       res.status(204).send();
     } catch (error) {
