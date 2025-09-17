@@ -373,6 +373,5 @@ export function invalidateMessageCaches(eventId: number) {
   messageCache.invalidatePattern(`^${eventId}_.*`);
 }
 
-// Export the main cache object and helpers
-export { cache, cacheKeys };
+// Export the main cache object as default
 export default cache;

@@ -9,6 +9,7 @@ import OpenAI from "openai";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { userCache, eventCache, messageCache, invalidateUserCaches, invalidateEventCaches } from "./cache";
+import cache, { cacheKeys } from "./cache";
 import { toZonedTime, formatInTimeZone } from 'date-fns-tz';
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -109,7 +110,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         endDate = endDateObj.toISOString().split('T')[0]; // 7 days from now in YYYY-MM-DD format
       }
       
-      // Get events with slim projection for better performance (reduced payload size)
+      // Check cache first
+      const cacheKey = cacheKeys.eventList({
+        startDate,
+        endDate,
+        category,
+        timeFilter,
+        timePeriod,
+        limit,
+        offset,
+        timezoneOffset,
+        userId: undefined // browse endpoint doesn't have userId
+      });
+      
+      const cachedResult = cache.get<any>('eventLists', cacheKey);
+      if (cachedResult) {
+        // Return cached result
+        res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=60');
+        res.setHeader('X-Cache', 'HIT');
+        return res.json(cachedResult);
+      }
+      
+      // Cache miss - fetch from database
       const { events, total } = await storage.getEventsByDateRangeSlim(
         startDate, endDate, category, timeFilter, timePeriod, limit, offset, timezoneOffset
       );
@@ -120,10 +142,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasNext = offset + limit < total;
       const hasPrevious = offset > 0;
       
-      // Return paginated response with metadata
-      // Add cache headers for browse endpoint - 5 minutes for event listings
-      res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=60');
-      res.json({
+      const result = {
         events,
         pagination: {
           total,
@@ -134,7 +153,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           hasNext,
           hasPrevious
         }
-      });
+      };
+      
+      // Store in cache
+      cache.set('eventLists', cacheKey, result);
+      
+      // Return paginated response with metadata
+      // Add cache headers for browse endpoint - 5 minutes for event listings
+      res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=60');
+      res.setHeader('X-Cache', 'MISS');
+      res.json(result);
     } catch (error) {
       console.error("Error fetching browse events:", error);
       res.status(500).json({ message: "Failed to fetch browse events" });
@@ -151,10 +179,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isNaN(limit) || limit < 1) limit = 20;
       if (limit > 50) limit = 50; // Max 50 for home page to ensure fast loads
       
+      // Check cache first
+      const cacheKey = cacheKeys.homeEvents(userId, category, timeFilter, limit);
+      const cachedEvents = cache.get<any[]>('eventLists', cacheKey);
+      if (cachedEvents) {
+        res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=60');
+        res.setHeader('X-Cache', 'HIT');
+        return res.json(cachedEvents);
+      }
+      
+      // Cache miss - fetch from database
       // For Home page, exclude past events
       const events = await storage.getEvents(userId, category, timeFilter, limit, true);
+      
+      // Store in cache
+      cache.set('eventLists', cacheKey, events);
+      
       // Add cache headers for events endpoint - 5 minutes
       res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=60');
+      res.setHeader('X-Cache', 'MISS');
       res.json(events);
     } catch (error) {
       console.error("Error fetching events:", error);
@@ -167,13 +210,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const eventId = parseInt(req.params.id);
       const userId = req.user?.claims?.sub;
       
+      // Check cache first
+      const cacheKey = cacheKeys.event(eventId, userId);
+      const cachedEvent = cache.get<EventWithOrganizer>('events', cacheKey);
+      if (cachedEvent) {
+        res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=60');
+        res.setHeader('X-Cache', 'HIT');
+        return res.json(cachedEvent);
+      }
+      
+      // Cache miss - fetch from database
       const event = await storage.getEvent(eventId, userId);
       if (!event) {
         return res.status(404).json({ message: "Event not found" });
       }
       
+      // Store in cache
+      cache.set('events', cacheKey, event);
+      
       // Add cache headers for individual event - 5 minutes
       res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=60');
+      res.setHeader('X-Cache', 'MISS');
       res.json(event);
     } catch (error) {
       console.error("Error fetching event:", error);
