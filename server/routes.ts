@@ -109,11 +109,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         endDate = endDateObj.toISOString().split('T')[0]; // 7 days from now in YYYY-MM-DD format
       }
       
-      // Get total count of events in date range
-      const total = await storage.getEventCountByDateRange(startDate, endDate, category, timeFilter, timePeriod, timezoneOffset);
-      
-      // Get paginated events with date range filtering
-      const events = await storage.getEventsByDateRange(startDate, endDate, category, timeFilter, timePeriod, limit, offset, timezoneOffset);
+      // Get events and total count in a single optimized query
+      const { events, total } = await storage.getEventsByDateRangeWithCount(
+        startDate, endDate, category, timeFilter, timePeriod, limit, offset, timezoneOffset
+      );
       
       // Calculate pagination metadata
       const currentPage = total > 0 ? Math.floor(offset / limit) + 1 : 1;

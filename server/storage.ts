@@ -37,6 +37,8 @@ export interface IStorage {
   getEvents(userId?: string, category?: string, timeFilter?: string, limit?: number, excludePastEvents?: boolean, timezoneOffset?: number): Promise<EventWithOrganizer[]>;
   getEventsByDateRange(startDate: string, endDate: string, category?: string, timeFilter?: string, timePeriod?: string, limit?: number, offset?: number, timezoneOffset?: number): Promise<EventWithOrganizer[]>;
   getEventCountByDateRange(startDate: string, endDate: string, category?: string, timeFilter?: string, timePeriod?: string, timezoneOffset?: number): Promise<number>;
+  // Optimized method that gets events and count in single query
+  getEventsByDateRangeWithCount(startDate: string, endDate: string, category?: string, timeFilter?: string, timePeriod?: string, limit?: number, offset?: number, timezoneOffset?: number): Promise<{ events: EventWithOrganizer[], total: number }>;
   getEvent(id: number, userId?: string): Promise<EventWithOrganizer | undefined>;
   createEvent(event: InsertEvent): Promise<Event>;
   createExternalEvent(event: { title: string; description: string; category: string; date: string; time: string; location: string; organizerEmail?: string; source?: string; sourceUrl?: string; latitude?: string; longitude?: string; price?: string; isFree?: boolean; eventImageUrl?: string; [key: string]: any }): Promise<Event>;
@@ -444,6 +446,109 @@ export class DatabaseStorage implements IStorage {
       .where(and(...whereConditions));
     
     return result[0]?.count || 0;
+  }
+
+  // Optimized method that gets both events and total count in a single query using window functions
+  async getEventsByDateRangeWithCount(startDate: string, endDate: string, category?: string, timeFilter?: string, timePeriod?: string, limit = 100, offset = 0, timezoneOffset = 0): Promise<{ events: EventWithOrganizer[], total: number }> {
+    // Build WHERE conditions for date range filtering
+    const whereConditions = [
+      eq(events.isActive, true),
+      // Always exclude private chats from public event listings
+      or(
+        eq(events.isPrivateChat, false),
+        sql`${events.isPrivateChat} IS NULL`
+      ),
+      // Date range filtering - events between startDate and endDate (inclusive)
+      gte(events.date, startDate),
+      lte(events.date, endDate),
+      category ? eq(events.category, category) : undefined,
+      ...(timeFilter ? this.getTimeFilterWhere(timeFilter, timezoneOffset) : []),
+      ...(timePeriod ? this.getTimePeriodWhere(timePeriod) : []),
+    ].filter(Boolean);
+
+    // Single query to get both events and total count using window functions
+    const results = await db
+      .select({
+        // All event fields
+        id: events.id,
+        title: events.title,
+        description: events.description,
+        category: events.category,
+        subCategory: events.subCategory,
+        date: events.date,
+        time: events.time,
+        timezone: events.timezone,
+        utcDateTime: events.utcDateTime,
+        location: events.location,
+        latitude: events.latitude,
+        longitude: events.longitude,
+        price: events.price,
+        isFree: events.isFree,
+        eventImageUrl: events.eventImageUrl,
+        organizerId: events.organizerId,
+        maxAttendees: events.maxAttendees,
+        capacity: events.capacity,
+        parkingInfo: events.parkingInfo,
+        meetingPoint: events.meetingPoint,
+        duration: events.duration,
+        whatToBring: events.whatToBring,
+        specialNotes: events.specialNotes,
+        requirements: events.requirements,
+        contactInfo: events.contactInfo,
+        cancellationPolicy: events.cancellationPolicy,
+        isActive: events.isActive,
+        isPrivateChat: events.isPrivateChat,
+        createdAt: events.createdAt,
+        updatedAt: events.updatedAt,
+        // Organizer info - include all User fields to match type
+        organizer: {
+          id: users.id,
+          email: users.email,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          profileImageUrl: users.profileImageUrl,
+          customAvatarUrl: users.customAvatarUrl,
+          animeAvatarSeed: users.animeAvatarSeed,
+          location: users.location,
+          interests: users.interests,
+          personality: users.personality,
+          aiSignature: users.aiSignature,
+          skippedEvents: users.skippedEvents,
+          eventsShownSinceSkip: users.eventsShownSinceSkip,
+          authProvider: users.authProvider,
+          googleId: users.googleId,
+          facebookId: users.facebookId,
+          createdAt: users.createdAt,
+          updatedAt: users.updatedAt,
+        },
+        // Count using subquery for efficiency  
+        rsvpCount: sql<number>`(SELECT COUNT(*)::int FROM event_rsvps WHERE event_id = ${events.id} AND status IN ('attending', 'going'))`,
+        // Total count using window function - this runs once for the entire result set
+        totalCount: sql<number>`COUNT(*) OVER()::int`
+      })
+      .from(events)
+      .leftJoin(users, eq(events.organizerId, users.id))
+      .where(and(...whereConditions))
+      .orderBy(desc(events.date), desc(events.time))
+      .limit(limit)
+      .offset(offset);
+
+    if (results.length === 0) {
+      return { events: [], total: 0 };
+    }
+
+    // Extract total from first result (all rows have the same totalCount value)
+    const total = results[0].totalCount || 0;
+
+    // Map results to EventWithOrganizer format
+    const eventList = results.map(result => ({
+      ...result,
+      organizer: result.organizer!,
+      rsvpCount: result.rsvpCount || 0,
+      isPrivateChat: result.isPrivateChat ? true : undefined,
+    })) as EventWithOrganizer[];
+
+    return { events: eventList, total };
   }
 
   async getEvent(id: number, userId?: string): Promise<EventWithOrganizer | undefined> {
