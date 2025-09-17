@@ -1291,16 +1291,33 @@ export class DatabaseStorage implements IStorage {
       .insert(chatMessages)
       .values(message)
       .returning();
+    
+    // Invalidate historical cache for this chat
+    const { clearHistoricalCache } = await import('./historicalMessages');
+    clearHistoricalCache(message.eventId);
+    
     return newMessage;
   }
 
   async deleteChatMessage(messageId: number, userId: string): Promise<void> {
+    // Get the eventId before deleting
+    const message = await db.select({ eventId: chatMessages.eventId })
+      .from(chatMessages)
+      .where(eq(chatMessages.id, messageId))
+      .limit(1);
+    
     await db.delete(chatMessages).where(
       and(
         eq(chatMessages.id, messageId),
         eq(chatMessages.userId, userId)
       )
     );
+    
+    // Invalidate historical cache if message was deleted
+    if (message[0]) {
+      const { clearHistoricalCache } = await import('./historicalMessages');
+      clearHistoricalCache(message[0].eventId);
+    }
   }
 
   // Notification operations

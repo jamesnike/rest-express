@@ -56,19 +56,23 @@ export async function fetchHistoricalMessages(
   if (cursor) {
     if (direction === 'before') {
       // Get messages before the cursor (older messages)
+      // Use composite cursor for deterministic pagination
       conditions.push(
-        lt(chatMessages.createdAt, cursor.createdAt)
+        sql`(${chatMessages.createdAt} < ${cursor.createdAt} OR 
+            (${chatMessages.createdAt} = ${cursor.createdAt} AND ${chatMessages.id} < ${cursor.id}))`
       );
     } else {
       // Get messages after the cursor (newer messages)
+      // Use composite cursor for deterministic pagination
       conditions.push(
-        gt(chatMessages.createdAt, cursor.createdAt)
+        sql`(${chatMessages.createdAt} > ${cursor.createdAt} OR 
+            (${chatMessages.createdAt} = ${cursor.createdAt} AND ${chatMessages.id} > ${cursor.id}))`
       );
     }
   }
 
   // Build and execute query based on direction
-  const query = db
+  const stmt = db
     .select({
       id: chatMessages.id,
       eventId: chatMessages.eventId,
@@ -83,15 +87,21 @@ export async function fetchHistoricalMessages(
         lastName: users.lastName,
         profileImageUrl: users.profileImageUrl,
         animeAvatarSeed: users.animeAvatarSeed,
+        authProvider: users.authProvider,
+        googleId: users.googleId,
+        facebookId: users.facebookId,
       },
     })
     .from(chatMessages)
     .leftJoin(users, eq(chatMessages.userId, users.id))
     .where(and(...conditions))
-    .orderBy(direction === 'before' ? desc(chatMessages.createdAt) : asc(chatMessages.createdAt))
+    .orderBy(
+      direction === 'before' ? desc(chatMessages.createdAt) : asc(chatMessages.createdAt),
+      direction === 'before' ? desc(chatMessages.id) : asc(chatMessages.id)
+    )
     .limit(limit + 1);
 
-  const results = await query;
+  const results = await stmt;
 
   // Check if there are more messages
   const hasMore = results.length > limit;
@@ -165,6 +175,10 @@ export async function fetchHistoricalMessageBatch(
           firstName: users.firstName,
           lastName: users.lastName,
           profileImageUrl: users.profileImageUrl,
+          animeAvatarSeed: users.animeAvatarSeed,
+          authProvider: users.authProvider,
+          googleId: users.googleId,
+          facebookId: users.facebookId,
         },
       })
       .from(chatMessages)
@@ -207,8 +221,8 @@ export async function searchHistoricalMessages(
 ): Promise<HistoricalMessageResult> {
   const { cursor, limit = 50, dateRange } = options;
   
-  // Create search cache key
-  const cacheKey = `search:${chatId}:${searchTerm}:${cursor?.id || 'start'}:${limit}`;
+  // Create search cache key with composite cursor
+  const cacheKey = `search:${chatId}:${searchTerm}:${cursor ? `${cursor.id}_${cursor.createdAt.getTime()}` : 'start'}:${limit}`;
   const cached = historicalCache.get(cacheKey);
   if (cached) {
     return cached;
