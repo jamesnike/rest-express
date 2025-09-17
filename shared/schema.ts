@@ -83,7 +83,20 @@ export const events = pgTable("events", {
   isPrivateChat: boolean("is_private_chat").default(false), // Mark for 1-on-1 private chats
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => ({
+  // Composite index for active events by date and time (most common query pattern)
+  isActiveDateTimeIdx: index("events_is_active_date_time_idx").on(table.isActive, table.date, table.time),
+  // Index for date queries
+  dateTimeIdx: index("events_date_time_idx").on(table.date, table.time),
+  // Index for category filtering with date
+  categoryDateIdx: index("events_category_date_idx").on(table.category, table.date),
+  // Index for organizer's events with date
+  organizerDateIdx: index("events_organizer_id_date_idx").on(table.organizerId, table.date),
+  // Index for private chats (much faster lookups)
+  privateChatIdx: index("events_private_chat_idx").on(table.isPrivateChat),
+  // Index for location-based queries
+  locationIdx: index("events_location_idx").on(table.location),
+}));
 
 // Event RSVPs table
 export const eventRsvps = pgTable("event_rsvps", {
@@ -93,7 +106,14 @@ export const eventRsvps = pgTable("event_rsvps", {
   status: varchar("status", { length: 20 }).notNull().default("going"), // going, maybe, not_going
   hasLeftChat: boolean("has_left_chat").default(false), // Track if user has left the group chat
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+  // Index for looking up RSVPs by event (for counting attendees)
+  eventIdIdx: index("event_rsvps_event_id_idx").on(table.eventId),
+  // Index for looking up user's RSVPs
+  userIdIdx: index("event_rsvps_user_id_idx").on(table.userId),
+  // Composite index for efficient RSVP lookups
+  eventUserIdx: index("event_rsvps_event_id_user_id_idx").on(table.eventId, table.userId),
+}));
 
 // Relations
 export const userRelations = relations(users, ({ many }) => ({
