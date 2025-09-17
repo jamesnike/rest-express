@@ -121,6 +121,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasPrevious = offset > 0;
       
       // Return paginated response with metadata
+      // Add cache headers for browse endpoint - 5 minutes for event listings
+      res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=60');
       res.json({
         events,
         pagination: {
@@ -148,6 +150,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // For Home page, exclude past events
       const events = await storage.getEvents(userId, category, timeFilter, limit, true);
+      // Add cache headers for events endpoint - 5 minutes
+      res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=60');
       res.json(events);
     } catch (error) {
       console.error("Error fetching events:", error);
@@ -165,6 +169,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Event not found" });
       }
       
+      // Add cache headers for individual event - 5 minutes
+      res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=60');
       res.json(event);
     } catch (error) {
       console.error("Error fetching event:", error);
