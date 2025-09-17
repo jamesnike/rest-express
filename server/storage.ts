@@ -1180,6 +1180,9 @@ export class DatabaseStorage implements IStorage {
           eventsShownSinceSkip: users.eventsShownSinceSkip,
           createdAt: users.createdAt,
           updatedAt: users.updatedAt,
+          authProvider: users.authProvider,
+          googleId: users.googleId,
+          facebookId: users.facebookId,
         },
       })
       .from(chatMessages)

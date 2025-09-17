@@ -10,6 +10,7 @@ import { db } from "./db";
 import { eq } from "drizzle-orm";
 import cache, { cacheKeys, eventCache } from "./cache";
 import chatCacheOps, { chatCacheKeys, chatCaches } from "./chatCache";
+import historicalMessages from "./historicalMessages";
 import { toZonedTime, formatInTimeZone } from 'date-fns-tz';
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -914,6 +915,44 @@ Please respond with just the signature text, nothing else.`;
     }
   });
 
+  // Get private chat historical messages with cursor pagination
+  app.get('/api/chats/private/:chatId/messages/history', requireAuth, async (req: any, res) => {
+    try {
+      const chatId = parseInt(req.params.chatId);
+      const userId = req.user.claims.sub;
+      
+      // Verify user has access to this private chat
+      const privateChats = await storage.getUserPrivateChats(userId);
+      const hasAccess = privateChats.some(chat => chat.id === chatId);
+      
+      if (!hasAccess) {
+        return res.status(403).json({ message: "Access denied to this chat" });
+      }
+      
+      // Parse cursor from query params
+      const cursorId = req.query.cursorId ? parseInt(req.query.cursorId as string) : undefined;
+      const cursorDate = req.query.cursorDate ? new Date(req.query.cursorDate as string) : undefined;
+      const direction = (req.query.direction as 'before' | 'after') || 'before';
+      const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+      
+      // Fetch historical messages
+      const cursor = cursorId && cursorDate ? { id: cursorId, createdAt: cursorDate } : undefined;
+      const result = await historicalMessages.fetchHistoricalMessages({
+        chatId,
+        cursor,
+        direction,
+        limit,
+      });
+      
+      res.setHeader('Cache-Control', 'private, max-age=300'); // 5 min cache for historical data
+      res.setHeader('X-Cache', result.messages.length > 0 ? 'HIT' : 'MISS');
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching private chat historical messages:", error);
+      res.status(500).json({ message: "Failed to fetch historical messages" });
+    }
+  });
+  
   // Get private chat messages - new path expected by client
   app.get('/api/chats/private/:chatId/messages', requireAuth, async (req: any, res) => {
     try {
@@ -1037,6 +1076,73 @@ Please respond with just the signature text, nothing else.`;
     }
   });
 
+  // Get historical messages with cursor-based pagination
+  app.get('/api/events/:id/messages/history', requireAuth, async (req: any, res) => {
+    try {
+      const eventId = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      
+      // Parse cursor from query params
+      const cursorId = req.query.cursorId ? parseInt(req.query.cursorId as string) : undefined;
+      const cursorDate = req.query.cursorDate ? new Date(req.query.cursorDate as string) : undefined;
+      const direction = (req.query.direction as 'before' | 'after') || 'before';
+      const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+      
+      // Verify user has access to event
+      const event = await storage.getEvent(eventId, userId);
+      if (!event) {
+        return res.status(404).json({ message: "Event not found or access denied" });
+      }
+      
+      // Fetch historical messages
+      const cursor = cursorId && cursorDate ? { id: cursorId, createdAt: cursorDate } : undefined;
+      const result = await historicalMessages.fetchHistoricalMessages({
+        chatId: eventId,
+        cursor,
+        direction,
+        limit,
+      });
+      
+      res.setHeader('Cache-Control', 'private, max-age=300'); // 5 min cache for historical data
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching historical messages:", error);
+      res.status(500).json({ message: "Failed to fetch historical messages" });
+    }
+  });
+  
+  // Search messages in chat history
+  app.get('/api/events/:id/messages/search', requireAuth, async (req: any, res) => {
+    try {
+      const eventId = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      const searchTerm = req.query.q as string;
+      
+      if (!searchTerm || searchTerm.trim().length < 2) {
+        return res.status(400).json({ message: "Search term must be at least 2 characters" });
+      }
+      
+      // Verify user has access
+      const event = await storage.getEvent(eventId, userId);
+      if (!event) {
+        return res.status(404).json({ message: "Event not found or access denied" });
+      }
+      
+      // Search historical messages
+      const result = await historicalMessages.searchHistoricalMessages(
+        eventId,
+        searchTerm,
+        { limit: 50 }
+      );
+      
+      res.setHeader('Cache-Control', 'private, max-age=60'); // 1 min cache for search
+      res.json(result);
+    } catch (error) {
+      console.error("Error searching messages:", error);
+      res.status(500).json({ message: "Failed to search messages" });
+    }
+  });
+  
   // Chat routes
   app.get('/api/events/:id/messages', requireAuth, async (req: any, res) => {
     try {
