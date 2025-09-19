@@ -34,7 +34,7 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
   
   // Event operations
-  getEvents(userId?: string, category?: string, timeFilter?: string, limit?: number, excludePastEvents?: boolean, timezoneOffset?: number): Promise<EventWithOrganizer[]>;
+  getEvents(userId?: string, category?: string, timeFilter?: string, limit?: number, offset?: number, excludePastEvents?: boolean, timezoneOffset?: number): Promise<{ events: EventWithOrganizer[], total: number }>;
   getEventsByDateRange(startDate: string, endDate: string, category?: string, timeFilter?: string, timePeriod?: string, limit?: number, offset?: number, timezoneOffset?: number): Promise<EventWithOrganizer[]>;
   getEventCountByDateRange(startDate: string, endDate: string, category?: string, timeFilter?: string, timePeriod?: string, timezoneOffset?: number): Promise<number>;
   // Optimized method that gets events and count in single query
@@ -223,7 +223,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Event operations
-  async getEvents(userId?: string, category?: string, timeFilter?: string, limit = 20, excludePastEvents = false, timezoneOffset = 0): Promise<EventWithOrganizer[]> {
+  async getEvents(userId?: string, category?: string, timeFilter?: string, limit = 20, offset = 0, excludePastEvents = false, timezoneOffset = 0): Promise<{ events: EventWithOrganizer[], total: number }> {
     // Get user's skipped events if userId is provided
     let userSkippedEvents: number[] = [];
     if (userId) {
@@ -265,7 +265,8 @@ export class DatabaseStorage implements IStorage {
       console.log(`No skipped events to filter for user ${userId}`);
     }
 
-    const query = db
+    // Single query to get both events and total count using window functions
+    const results = await db
       .select({
         id: events.id,
         title: events.title,
@@ -316,6 +317,8 @@ export class DatabaseStorage implements IStorage {
         },
         rsvpCount: sql<number>`COUNT(${eventRsvps.id})::int`,
         userRsvpStatus: userId ? sql<string>`MAX(CASE WHEN ${eventRsvps.userId} = ${userId} THEN ${eventRsvps.status} END)` : sql<string>`NULL`,
+        // Total count using window function
+        totalCount: sql<number>`CAST(COUNT(*) OVER() AS INTEGER)`
       })
       .from(events)
       .leftJoin(users, eq(events.organizerId, users.id))
@@ -323,16 +326,26 @@ export class DatabaseStorage implements IStorage {
       .where(and(...whereConditions))
       .groupBy(events.id, users.id)
       .orderBy(asc(events.date), asc(events.time))
-      .limit(limit);
+      .limit(limit)
+      .offset(offset);
 
-    const results = await query;
-    return results.map(result => ({
+    if (results.length === 0) {
+      return { events: [], total: 0 };
+    }
+
+    // Extract total from first result
+    const total = results[0].totalCount || 0;
+
+    // Map results removing totalCount from each item and formatting
+    const eventsList = results.map(({ totalCount, ...result }) => ({
       ...result,
       organizer: result.organizer!,
       rsvpCount: result.rsvpCount || 0,
       userRsvpStatus: result.userRsvpStatus || undefined,
       isPrivateChat: result.isPrivateChat ? true : undefined,
     }) as any);
+
+    return { events: eventsList, total };
   }
 
   async getEventsByDateRange(startDate: string, endDate: string, category?: string, timeFilter?: string, timePeriod?: string, limit = 100, offset = 0, timezoneOffset = 0): Promise<EventWithOrganizer[]> {

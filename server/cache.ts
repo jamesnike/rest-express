@@ -104,8 +104,8 @@ export const cacheKeys = {
     return parts.join(':');
   },
   
-  homeEvents: (userId: string | undefined, category: string | undefined, timeFilter: string | undefined, limit: number) => {
-    return `events:home:${userId || 'public'}:${category || 'all'}:${timeFilter || 'none'}:${limit}`;
+  homeEvents: (userId: string | undefined, category: string | undefined, timeFilter: string | undefined, limit: number, offset = 0) => {
+    return `events:home:${userId || 'public'}:${category || 'all'}:${timeFilter || 'none'}:${limit}:${offset}`;
   },
   
   event: (id: number, userId?: string) => {

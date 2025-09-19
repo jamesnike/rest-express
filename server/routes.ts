@@ -191,31 +191,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user?.claims?.sub;
       const category = req.query.category as string | undefined;
       const timeFilter = req.query.timeFilter as string | undefined;
-      // Enforce pagination limits for performance
+      
+      // Parse and sanitize pagination parameters
       let limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
       if (isNaN(limit) || limit < 1) limit = 20;
       if (limit > 50) limit = 50; // Max 50 for home page to ensure fast loads
       
-      // Check cache first
-      const cacheKey = cacheKeys.homeEvents(userId, category, timeFilter, limit);
-      const cachedEvents = cache.get<any[]>('eventLists', cacheKey);
-      if (cachedEvents) {
+      // Handle pagination parameters with validation
+      let offset = 0;
+      if (req.query.offset) {
+        offset = parseInt(req.query.offset as string);
+        if (isNaN(offset) || offset < 0) offset = 0;
+      } else if (req.query.page) {
+        let page = parseInt(req.query.page as string);
+        if (isNaN(page) || page < 1) page = 1;
+        offset = (page - 1) * limit;
+      }
+      
+      // Check cache first (include offset in cache key)
+      const cacheKey = cacheKeys.homeEvents(userId, category, timeFilter, limit, offset);
+      const cachedResult = cache.get<any>('eventLists', cacheKey);
+      if (cachedResult) {
         res.setHeader('Cache-Control', 'private, max-age=300, stale-while-revalidate=60');
         res.setHeader('X-Cache', 'HIT');
-        return res.json(cachedEvents);
+        return res.json(cachedResult);
       }
       
       // Cache miss - fetch from database
       // For Home page, exclude past events
-      const events = await storage.getEvents(userId, category, timeFilter, limit, true);
+      const { events, total } = await storage.getEvents(userId, category, timeFilter, limit, offset, true);
+      
+      // Calculate pagination metadata
+      const currentPage = total > 0 ? Math.floor(offset / limit) + 1 : 1;
+      const totalPages = total > 0 ? Math.ceil(total / limit) : 1;
+      const hasNext = offset + limit < total;
+      const hasPrevious = offset > 0;
+      
+      const result = {
+        events,
+        pagination: {
+          total,
+          limit,
+          offset,
+          currentPage,
+          totalPages,
+          hasNext,
+          hasPrevious
+        }
+      };
       
       // Store in cache
-      cache.set('eventLists', cacheKey, events);
+      cache.set('eventLists', cacheKey, result);
       
       // Add cache headers for events endpoint - 5 minutes (private for user-specific data)
       res.setHeader('Cache-Control', 'private, max-age=300, stale-while-revalidate=60');
       res.setHeader('X-Cache', 'MISS');
-      res.json(events);
+      res.json(result);
     } catch (error) {
       console.error("Error fetching events:", error);
       res.status(500).json({ message: "Failed to fetch events" });
