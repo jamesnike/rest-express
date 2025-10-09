@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Calendar, Users, MapPin, Star } from "lucide-react";
+import { Calendar, Users, MapPin, Star, Mail } from "lucide-react";
+import { FaGoogle, FaFacebook } from "react-icons/fa";
 
 export default function Landing() {
   const [showLogin, setShowLogin] = useState(false);
@@ -75,34 +76,67 @@ export default function Landing() {
         </div>
       </div>
       
-      <button 
-        onClick={() => {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('Get Started button clicked, creating demo login');
-          }
-          // For demo purposes, use a predefined user
-          fetch('/api/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: 'demo@eventconnect.app',
-              firstName: 'Demo',
-              lastName: 'User'
-            })
-          })
-          .then(res => res.json())
-          .then(data => {
-            if (data.token) {
-              localStorage.setItem('auth_token', data.token);
-              window.location.href = '/';
+      {/* OAuth Login Buttons */}
+      <div className="space-y-3 mb-4">
+        <button
+          onClick={() => {
+            window.location.href = '/auth/google';
+          }}
+          className="w-full bg-white border border-gray-300 text-gray-700 rounded-lg p-4 font-medium hover:bg-gray-50 transition-colors flex items-center justify-center space-x-3"
+        >
+          <FaGoogle className="w-5 h-5 text-red-500" />
+          <span>Continue with Google</span>
+        </button>
+        
+        <button
+          onClick={() => {
+            window.location.href = '/auth/facebook';
+          }}
+          className="w-full bg-[#1877F2] text-white rounded-lg p-4 font-medium hover:bg-[#166FE5] transition-colors flex items-center justify-center space-x-3"
+        >
+          <FaFacebook className="w-5 h-5" />
+          <span>Continue with Facebook</span>
+        </button>
+        
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-300" />
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="bg-white px-2 text-gray-500">Or</span>
+          </div>
+        </div>
+        
+        <button 
+          onClick={() => {
+            if (process.env.NODE_ENV === 'development') {
+              console.log('Demo login button clicked');
             }
-          })
-          .catch(err => console.error('Login failed:', err));
-        }}
-        className="w-full bg-primary text-white rounded-lg p-4 font-medium mb-4 hover:bg-primary/90 transition-colors"
-      >
-        Get Started
-      </button>
+            // For demo purposes, use a predefined user
+            fetch('/api/auth/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                email: 'demo@eventconnect.app',
+                firstName: 'Demo',
+                lastName: 'User'
+              })
+            })
+            .then(res => res.json())
+            .then(data => {
+              if (data.token) {
+                localStorage.setItem('auth_token', data.token);
+                window.location.href = '/';
+              }
+            })
+            .catch(err => console.error('Login failed:', err));
+          }}
+          className="w-full bg-gray-600 text-white rounded-lg p-4 font-medium hover:bg-gray-700 transition-colors flex items-center justify-center space-x-3"
+        >
+          <Mail className="w-5 h-5" />
+          <span>Continue with Demo Account</span>
+        </button>
+      </div>
       
       <p className="text-center text-sm text-gray-600">
         By continuing, you agree to our Terms of Service and Privacy Policy

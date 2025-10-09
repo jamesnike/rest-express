@@ -5,6 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
+import { useEffect } from "react";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Home from "@/pages/home";
@@ -16,6 +17,29 @@ import CustomerService from "@/pages/customer-service";
 
 function Router() {
   const { isAuthenticated, isLoading, user, error, refetch } = useAuth();
+
+  // Handle OAuth callback - extract token from URL
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const authProvider = urlParams.get('authProvider');
+    const authError = urlParams.get('error');
+    
+    if (token) {
+      // Store the token and clear the URL
+      localStorage.setItem('auth_token', token);
+      if (authProvider) {
+        localStorage.setItem('auth_provider', authProvider);
+      }
+      // Clean URL and reload to trigger auth check
+      window.history.replaceState({}, document.title, '/');
+      refetch();
+    } else if (authError) {
+      console.error('OAuth authentication failed:', authError);
+      // Clean URL
+      window.history.replaceState({}, document.title, '/');
+    }
+  }, [refetch]);
 
   // Debug authentication state in development
   if (process.env.NODE_ENV === 'development') {
