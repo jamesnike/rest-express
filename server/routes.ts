@@ -12,10 +12,52 @@ import cache, { cacheKeys, eventCache } from "./cache";
 import chatCacheOps, { chatCacheKeys, chatCaches } from "./chatCache";
 import historicalMessages from "./historicalMessages";
 import { toZonedTime, formatInTimeZone } from 'date-fns-tz';
+import passport, { generateOAuthToken } from "./oauth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth setup
   await setupJWTAuth(app);
+  
+  // Initialize Passport
+  app.use(passport.initialize());
+
+  // OAuth routes - Google
+  app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+  
+  app.get('/auth/google/callback', 
+    passport.authenticate('google', { session: false, failureRedirect: '/' }),
+    async (req: any, res) => {
+      try {
+        const user = req.user;
+        const token = generateOAuthToken(user);
+        
+        // Redirect to frontend with token
+        res.redirect(`/?token=${token}&authProvider=google`);
+      } catch (error) {
+        console.error('Google OAuth callback error:', error);
+        res.redirect('/?error=auth_failed');
+      }
+    }
+  );
+
+  // OAuth routes - Facebook
+  app.get('/auth/facebook', passport.authenticate('facebook', { scope: ['email'] }));
+  
+  app.get('/auth/facebook/callback',
+    passport.authenticate('facebook', { session: false, failureRedirect: '/' }),
+    async (req: any, res) => {
+      try {
+        const user = req.user;
+        const token = generateOAuthToken(user);
+        
+        // Redirect to frontend with token
+        res.redirect(`/?token=${token}&authProvider=facebook`);
+      } catch (error) {
+        console.error('Facebook OAuth callback error:', error);
+        res.redirect('/?error=auth_failed');
+      }
+    }
+  );
 
   // Auth routes
   app.get('/api/auth/user', requireAuth, async (req: any, res) => {
