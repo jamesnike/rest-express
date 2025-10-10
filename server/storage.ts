@@ -100,6 +100,9 @@ export interface IStorage {
   getPendingFriendRequests(userId: string): Promise<Array<Friendship & { user: User }>>;
   getSentFriendRequests(userId: string): Promise<Array<Friendship & { friend: User }>>;
   checkFriendshipStatus(userId: string, friendId: string): Promise<string | null>;
+  
+  // Helper to get user's RSVP'd event IDs
+  getUserRsvpEventIds(userId: string): Promise<number[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2396,6 +2399,25 @@ export class DatabaseStorage implements IStorage {
       .limit(1);
     
     return friendship ? friendship.status : null;
+  }
+  
+  async getUserRsvpEventIds(userId: string): Promise<number[]> {
+    // Get all event IDs the user has RSVP'd to (attending, going, or maybe)
+    const rsvps = await db
+      .select({ eventId: eventRsvps.eventId })
+      .from(eventRsvps)
+      .where(
+        and(
+          eq(eventRsvps.userId, userId),
+          or(
+            eq(eventRsvps.status, 'attending'),
+            eq(eventRsvps.status, 'going'), 
+            eq(eventRsvps.status, 'maybe')
+          )
+        )
+      );
+    
+    return rsvps.map(r => r.eventId);
   }
 }
 
