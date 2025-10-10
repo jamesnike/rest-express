@@ -295,40 +295,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/events/:id', optionalAuth, async (req: any, res) => {
-    try {
-      const eventId = parseInt(req.params.id);
-      const userId = req.user?.claims?.sub;
-      
-      // Check cache first
-      const cacheKey = cacheKeys.event(eventId, userId);
-      const cachedEvent = cache.get<EventWithOrganizer>('events', cacheKey);
-      if (cachedEvent) {
-        res.setHeader('Cache-Control', userId ? 'private, max-age=300, stale-while-revalidate=60' : 'public, max-age=300, stale-while-revalidate=60');
-        res.setHeader('X-Cache', 'HIT');
-        return res.json(cachedEvent);
-      }
-      
-      // Cache miss - fetch from database
-      const event = await storage.getEvent(eventId, userId);
-      if (!event) {
-        return res.status(404).json({ message: "Event not found" });
-      }
-      
-      // Store in cache
-      cache.set('events', cacheKey, event);
-      
-      // Add cache headers for individual event - 5 minutes
-      res.setHeader('Cache-Control', userId ? 'private, max-age=300, stale-while-revalidate=60' : 'public, max-age=300, stale-while-revalidate=60');
-      res.setHeader('X-Cache', 'MISS');
-      res.json(event);
-    } catch (error) {
-      console.error("Error fetching event:", error);
-      res.status(500).json({ message: "Failed to fetch event" });
-    }
-  });
-
-  // New Event Discovery endpoint with advanced filtering
+  // New Event Discovery endpoint with advanced filtering - MUST be before :id route
   app.get('/api/events/discover', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -492,6 +459,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  app.get('/api/events/:id', optionalAuth, async (req: any, res) => {
+    try {
+      const eventId = parseInt(req.params.id);
+      const userId = req.user?.claims?.sub;
+      
+      // Check cache first
+      const cacheKey = cacheKeys.event(eventId, userId);
+      const cachedEvent = cache.get<EventWithOrganizer>('events', cacheKey);
+      if (cachedEvent) {
+        res.setHeader('Cache-Control', userId ? 'private, max-age=300, stale-while-revalidate=60' : 'public, max-age=300, stale-while-revalidate=60');
+        res.setHeader('X-Cache', 'HIT');
+        return res.json(cachedEvent);
+      }
+      
+      // Cache miss - fetch from database
+      const event = await storage.getEvent(eventId, userId);
+      if (!event) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+      
+      // Store in cache
+      cache.set('events', cacheKey, event);
+      
+      // Add cache headers for individual event - 5 minutes
+      res.setHeader('Cache-Control', userId ? 'private, max-age=300, stale-while-revalidate=60' : 'public, max-age=300, stale-while-revalidate=60');
+      res.setHeader('X-Cache', 'MISS');
+      res.json(event);
+    } catch (error) {
+      console.error("Error fetching event:", error);
+      res.status(500).json({ message: "Failed to fetch event" });
+    }
+  });
+
   app.get('/api/events/:id/attendees', async (req, res) => {
     try {
       const eventId = parseInt(req.params.id);
