@@ -328,6 +328,170 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // New Event Discovery endpoint with advanced filtering
+  app.get('/api/events/discover', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const category = req.query.category as string | undefined;
+      const sortBy = (req.query.sortBy as string) || 'date'; // date, trending, newest
+      const interests = req.query.interests as string | undefined; // comma-separated
+      const excludeRsvped = req.query.excludeRsvped !== 'false'; // default true
+      
+      // Parse pagination parameters
+      let limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
+      if (isNaN(limit) || limit < 1) limit = 20;
+      if (limit > 100) limit = 100; // Max 100 for discovery
+      
+      let offset = 0;
+      if (req.query.offset) {
+        offset = parseInt(req.query.offset as string);
+        if (isNaN(offset) || offset < 0) offset = 0;
+      } else if (req.query.page) {
+        let page = parseInt(req.query.page as string);
+        if (isNaN(page) || page < 1) page = 1;
+        offset = (page - 1) * limit;
+      }
+      
+      // Create user-specific cache key for discover endpoint
+      const cacheKey = `discover:${userId}:${category || 'all'}:${sortBy}:${excludeRsvped}:${limit}:${offset}`;
+      const cachedResult = cache.get<any>('eventLists', cacheKey);
+      if (cachedResult) {
+        res.setHeader('Cache-Control', 'private, max-age=120, stale-while-revalidate=30');
+        res.setHeader('X-Cache', 'HIT');
+        return res.json(cachedResult);
+      }
+      
+      // Get user's interests if not provided
+      let userInterests: string[] = [];
+      if (!interests) {
+        const user = await storage.getUser(userId);
+        if (user?.selectedInterests) {
+          userInterests = user.selectedInterests;
+        }
+      } else {
+        userInterests = interests.split(',').map(i => i.trim());
+      }
+      
+      // Fetch events with RSVP exclusion
+      const { events, total } = await storage.getEvents(
+        userId, 
+        category, 
+        undefined, // timeFilter not used in discovery
+        limit * 3, // Get more events for sorting/filtering
+        0, // We'll handle offset after sorting
+        true, // excludePastEvents
+        0, // timezoneOffset
+        excludeRsvped // New parameter to exclude RSVP'd events
+      );
+      
+      // Apply interest-based scoring if user has interests
+      let scoredEvents = events;
+      if (userInterests.length > 0) {
+        scoredEvents = events.map(event => {
+          let score = 0;
+          // Check if event category matches any user interest
+          if (userInterests.includes(event.category)) {
+            score += 10;
+          }
+          // Check if subcategory matches
+          if (event.subCategory && userInterests.includes(event.subCategory)) {
+            score += 5;
+          }
+          // Check for keywords in title/description
+          const eventText = `${event.title} ${event.description}`.toLowerCase();
+          userInterests.forEach(interest => {
+            if (eventText.includes(interest.toLowerCase())) {
+              score += 2;
+            }
+          });
+          return { ...event, interestScore: score };
+        });
+      }
+      
+      // Sort based on sortBy parameter
+      let sortedEvents = scoredEvents;
+      switch (sortBy) {
+        case 'trending':
+          // Sort by RSVP count (most popular first)
+          sortedEvents = [...scoredEvents].sort((a, b) => {
+            const aRsvp = (a as any).rsvpCount || 0;
+            const bRsvp = (b as any).rsvpCount || 0;
+            return bRsvp - aRsvp;
+          });
+          break;
+        case 'newest':
+          // Sort by creation date (newest first)
+          sortedEvents = [...scoredEvents].sort((a, b) => {
+            const aDate = new Date(a.createdAt).getTime();
+            const bDate = new Date(b.createdAt).getTime();
+            return bDate - aDate;
+          });
+          break;
+        case 'recommended':
+          // Sort by interest score (if available), then by date
+          if (userInterests.length > 0) {
+            sortedEvents = [...scoredEvents].sort((a: any, b: any) => {
+              if (a.interestScore !== b.interestScore) {
+                return b.interestScore - a.interestScore;
+              }
+              // Secondary sort by date
+              const dateCompare = a.date.localeCompare(b.date);
+              if (dateCompare !== 0) return dateCompare;
+              return a.time.localeCompare(b.time);
+            });
+          }
+          break;
+        case 'date':
+        default:
+          // Already sorted by date from the database
+          break;
+      }
+      
+      // Apply pagination to the sorted results
+      const paginatedEvents = sortedEvents.slice(offset, offset + limit);
+      
+      // Remove the interestScore from the response
+      const cleanedEvents = paginatedEvents.map(({ interestScore, ...event }: any) => event);
+      
+      // Calculate pagination metadata
+      const actualTotal = sortedEvents.length;
+      const currentPage = actualTotal > 0 ? Math.floor(offset / limit) + 1 : 1;
+      const totalPages = actualTotal > 0 ? Math.ceil(actualTotal / limit) : 1;
+      const hasNext = offset + limit < actualTotal;
+      const hasPrevious = offset > 0;
+      
+      const result = {
+        events: cleanedEvents,
+        pagination: {
+          total: actualTotal,
+          limit,
+          offset,
+          currentPage,
+          totalPages,
+          hasNext,
+          hasPrevious
+        },
+        filters: {
+          category,
+          sortBy,
+          excludeRsvped,
+          userInterests: userInterests.length > 0 ? userInterests : undefined
+        }
+      };
+      
+      // Store in cache with shorter TTL for discovery
+      cache.set('eventLists', cacheKey, result);
+      
+      // Add cache headers - shorter cache for personalized discovery
+      res.setHeader('Cache-Control', 'private, max-age=120, stale-while-revalidate=30');
+      res.setHeader('X-Cache', 'MISS');
+      res.json(result);
+    } catch (error) {
+      console.error("Error in event discovery:", error);
+      res.status(500).json({ message: "Failed to discover events" });
+    }
+  });
+  
   app.get('/api/events/:id/attendees', async (req, res) => {
     try {
       const eventId = parseInt(req.params.id);
