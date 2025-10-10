@@ -34,7 +34,7 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
   
   // Event operations
-  getEvents(userId?: string, category?: string, timeFilter?: string, limit?: number, offset?: number, excludePastEvents?: boolean, timezoneOffset?: number): Promise<{ events: EventWithOrganizer[], total: number }>;
+  getEvents(userId?: string, category?: string, timeFilter?: string, limit?: number, offset?: number, excludePastEvents?: boolean, timezoneOffset?: number, excludeRsvpedEvents?: boolean): Promise<{ events: EventWithOrganizer[], total: number }>;
   getEventsByDateRange(startDate: string, endDate: string, category?: string, timeFilter?: string, timePeriod?: string, limit?: number, offset?: number, timezoneOffset?: number): Promise<EventWithOrganizer[]>;
   getEventCountByDateRange(startDate: string, endDate: string, category?: string, timeFilter?: string, timePeriod?: string, timezoneOffset?: number): Promise<number>;
   // Optimized method that gets events and count in single query
@@ -226,9 +226,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Event operations
-  async getEvents(userId?: string, category?: string, timeFilter?: string, limit = 20, offset = 0, excludePastEvents = false, timezoneOffset = 0): Promise<{ events: EventWithOrganizer[], total: number }> {
-    // Get user's skipped events if userId is provided
+  async getEvents(userId?: string, category?: string, timeFilter?: string, limit = 20, offset = 0, excludePastEvents = false, timezoneOffset = 0, excludeRsvpedEvents = false): Promise<{ events: EventWithOrganizer[], total: number }> {
+    // Get user's skipped events and RSVP'd events if userId is provided
     let userSkippedEvents: number[] = [];
+    let userRsvpedEvents: number[] = [];
     if (userId) {
       const [user] = await db.select({ 
         skippedEvents: users.skippedEvents,
@@ -236,6 +237,12 @@ export class DatabaseStorage implements IStorage {
       }).from(users).where(eq(users.id, userId));
       userSkippedEvents = user?.skippedEvents || [];
       console.log(`User ${userId} skipped events:`, userSkippedEvents);
+      
+      // Get RSVP'd events if we need to exclude them
+      if (excludeRsvpedEvents) {
+        userRsvpedEvents = await this.getUserRsvpEventIds(userId);
+        console.log(`User ${userId} RSVP'd events to exclude:`, userRsvpedEvents);
+      }
     }
 
     // Build WHERE conditions
@@ -266,6 +273,12 @@ export class DatabaseStorage implements IStorage {
       whereConditions.push(sql`${events.id} NOT IN (${sql.raw(userSkippedEvents.map(id => `${id}`).join(', '))})`);
     } else {
       console.log(`No skipped events to filter for user ${userId}`);
+    }
+    
+    // Add RSVP'd events exclusion if requested
+    if (excludeRsvpedEvents && userRsvpedEvents.length > 0) {
+      console.log(`Filtering out RSVP'd events for user ${userId}:`, userRsvpedEvents);
+      whereConditions.push(sql`${events.id} NOT IN (${sql.raw(userRsvpedEvents.map(id => `${id}`).join(', '))})`);
     }
 
     // Single query to get both events and total count using window functions
