@@ -1,5 +1,10 @@
 # EventConnect - Mobile Event Discovery App
 
+## GitHub Repository
+- **URL**: https://github.com/jamesnike/rest-express
+- **Remote**: `origin` → `https://github.com/jamesnike/rest-express.git`
+- **Branch**: `main`
+
 ## Overview
 EventConnect is a mobile-first event discovery and management platform for finding, creating, and participating in local events. It aims to connect users with their community through shared interests and activities, offering a clean, mobile-optimized interface with robust event management and social features. The platform supports user authentication, interest selection (up to 3 interests displayed on profiles), and a vision to be the go-to app for local event engagement.
 
